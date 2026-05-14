@@ -6,8 +6,11 @@ import bcrypt from 'bcrypt'
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 
-const dbPath = join(__dirname, '..', 'inventory.db')
+const dbPath = process.env.NODE_ENV === 'production'
+  ? '/tmp/inventory.db'
+  : join(__dirname, '..', 'inventory.db')
 
+console.log('DB path:', dbPath)
 export const db = new Database(dbPath)
 
 db.pragma('journal_mode = WAL')
