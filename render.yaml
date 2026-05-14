@@ -2,7 +2,7 @@ services:
   - type: web
     name: sgic-inventory-api
     env: node
-    buildCommand: npm install --build-from-source
+    buildCommand: npm install
     startCommand: node server/index.js
     envVars:
       - key: NODE_ENV

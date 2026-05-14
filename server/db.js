@@ -1,6 +1,8 @@
 import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
+import { existsSync, readFileSync, writeFileSync } from 'fs'
 import bcrypt from 'bcryptjs'
+import initSqlJs from 'sql.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -15,27 +17,40 @@ let db
 
 async function getDB() {
   if (db) return db
+  const SQL = await initSqlJs()
+  if (existsSync(dbPath)) {
+    const fileBuffer = readFileSync(dbPath)
+    db = new SQL.Database(fileBuffer)
+  } else {
+    db = new SQL.Database()
+  }
+  db.run('PRAGMA journal_mode=WAL')
+  db.run('PRAGMA foreign_keys=ON')
+  console.log('Database opened successfully')
+  return db
+}
+
+function saveDB() {
+  if (!db) return
   try {
-    const Database = (await import('better-sqlite3')).default
-    db = new Database(dbPath)
-    db.pragma('journal_mode = WAL')
-    db.pragma('foreign_keys = ON')
-    console.log('Database opened successfully')
-    return db
+    const data = db.export()
+    writeFileSync(dbPath, Buffer.from(data))
   } catch (err) {
-    console.error('Failed to open database:', err)
-    throw err
+    console.error('Failed to save database:', err)
   }
 }
 
 export async function run(sql, params = []) {
   const database = await getDB()
   try {
-    const stmt = database.prepare(sql)
-    const result = stmt.run(...params)
-    return { lastID: result.lastInsertRowid, changes: result.changes }
+    database.run(sql, params)
+    saveDB()
+    // Get lastID and changes
+    const lastID = database.exec('SELECT last_insert_rowid()')[0]?.values[0][0] || 0
+    const changes = database.exec('SELECT changes()')[0]?.values[0][0] || 0
+    return { lastID, changes }
   } catch (err) {
-    console.error('SQL run error:', sql, params, err.message)
+    console.error('SQL run error:', sql, err.message)
     throw err
   }
 }
@@ -44,9 +59,16 @@ export async function get(sql, params = []) {
   const database = await getDB()
   try {
     const stmt = database.prepare(sql)
-    return stmt.get(...params)
+    stmt.bind(params)
+    if (stmt.step()) {
+      const row = stmt.getAsObject()
+      stmt.free()
+      return row
+    }
+    stmt.free()
+    return undefined
   } catch (err) {
-    console.error('SQL get error:', sql, params, err.message)
+    console.error('SQL get error:', sql, err.message)
     throw err
   }
 }
@@ -54,18 +76,23 @@ export async function get(sql, params = []) {
 export async function all(sql, params = []) {
   const database = await getDB()
   try {
+    const results = []
     const stmt = database.prepare(sql)
-    return stmt.all(...params)
+    stmt.bind(params)
+    while (stmt.step()) {
+      results.push(stmt.getAsObject())
+    }
+    stmt.free()
+    return results
   } catch (err) {
-    console.error('SQL all error:', sql, params, err.message)
+    console.error('SQL all error:', sql, err.message)
     throw err
   }
 }
 
 export async function initDB() {
-  await getDB() // ensure DB is open
+  await getDB()
 
-  // Migration: Add pan_vat column if it doesn't exist
   try { await run(`ALTER TABLE vendors ADD COLUMN pan_vat TEXT`) } catch {}
   try { await run(`ALTER TABLE inbound ADD COLUMN vendor_id INTEGER REFERENCES vendors(id)`) } catch {}
   try { await run(`ALTER TABLE inbound ADD COLUMN fiscal_year_id INTEGER REFERENCES fiscal_years(id)`) } catch {}
@@ -221,25 +248,23 @@ export async function initDB() {
   if (!existingUser) {
     console.log('Seeding initial data...')
 
-    await run(`INSERT OR IGNORE INTO categories (name, description) VALUES ('Stationery', 'Office stationery items')`)
-    await run(`INSERT OR IGNORE INTO categories (name, description) VALUES ('Office Equipment', 'Office equipment and furniture')`)
-    await run(`INSERT OR IGNORE INTO categories (name, description) VALUES ('Computer Supplies', 'Computer accessories and supplies')`)
+    await run(`INSERT OR IGNORE INTO categories (name, description) VALUES (?, ?)`, ['Stationery', 'Office stationery items'])
+    await run(`INSERT OR IGNORE INTO categories (name, description) VALUES (?, ?)`, ['Office Equipment', 'Office equipment and furniture'])
+    await run(`INSERT OR IGNORE INTO categories (name, description) VALUES (?, ?)`, ['Computer Supplies', 'Computer accessories and supplies'])
 
-    await run(`INSERT OR IGNORE INTO units (name, symbol) VALUES ('Piece', 'pc')`)
-    await run(`INSERT OR IGNORE INTO units (name, symbol) VALUES ('Box', 'box')`)
-    await run(`INSERT OR IGNORE INTO units (name, symbol) VALUES ('Ream', 'rm')`)
-    await run(`INSERT OR IGNORE INTO units (name, symbol) VALUES ('Pack', 'pk')`)
-    await run(`INSERT OR IGNORE INTO units (name, symbol) VALUES ('Kilogram', 'kg')`)
+    await run(`INSERT OR IGNORE INTO units (name, symbol) VALUES (?, ?)`, ['Piece', 'pc'])
+    await run(`INSERT OR IGNORE INTO units (name, symbol) VALUES (?, ?)`, ['Box', 'box'])
+    await run(`INSERT OR IGNORE INTO units (name, symbol) VALUES (?, ?)`, ['Ream', 'rm'])
+    await run(`INSERT OR IGNORE INTO units (name, symbol) VALUES (?, ?)`, ['Pack', 'pk'])
+    await run(`INSERT OR IGNORE INTO units (name, symbol) VALUES (?, ?)`, ['Kilogram', 'kg'])
 
-    await run(`INSERT OR IGNORE INTO branches (id, name, location) VALUES (1, 'Head Office', 'Kathmandu')`)
-    await run(`INSERT INTO branches (name, location) VALUES ('Kathmandu Branch', 'Kathmandu')`)
-    await run(`INSERT INTO branches (name, location) VALUES ('Pokhara Branch', 'Pokhara')`)
+    await run(`INSERT OR IGNORE INTO branches (id, name, location) VALUES (?, ?, ?)`, [1, 'Head Office', 'Kathmandu'])
+    await run(`INSERT INTO branches (name, location) VALUES (?, ?)`, ['Kathmandu Branch', 'Kathmandu'])
+    await run(`INSERT INTO branches (name, location) VALUES (?, ?)`, ['Pokhara Branch', 'Pokhara'])
 
     const hashedPassword = await bcrypt.hash('Admin@123', 10)
-    await run(
-      `INSERT INTO users (username, email, password, role, branch_id, active) VALUES (?, ?, ?, ?, ?, ?)`,
-      ['admin', 'admin@sanimagic.com', hashedPassword, 'admin', 1, 1]
-    )
+    await run(`INSERT INTO users (username, email, password, role, branch_id, active) VALUES (?, ?, ?, ?, ?, ?)`,
+      ['admin', 'admin@sanimagic.com', hashedPassword, 'admin', 1, 1])
 
     await run(`INSERT INTO items (item_code, name, category, unit, current_qty, weighted_avg_cost, reorder_level) VALUES (?, ?, ?, ?, ?, ?, ?)`,
       ['ITM001', 'A4 Paper', 'Stationery', 'Ream', 0, 0, 5])
