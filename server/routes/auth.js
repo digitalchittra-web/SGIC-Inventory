@@ -1,5 +1,5 @@
 import express from 'express'
-import bcrypt from 'bcrypt'
+import bcrypt from 'bcryptjs'
 import { run, get } from '../db.js'
 import { generateToken, auth, adminOnly, logAction } from '../middleware.js'
 
