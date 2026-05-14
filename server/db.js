@@ -1,149 +1,91 @@
-import { fileURLToPath } from 'url'
-import { dirname, join } from 'path'
-import { existsSync, readFileSync, writeFileSync } from 'fs'
+import pg from 'pg'
 import bcrypt from 'bcryptjs'
-import initSqlJs from 'sql.js'
 
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = dirname(__filename)
+const { Pool } = pg
 
-const dbPath = process.env.NODE_ENV === 'production'
-  ? '/tmp/inventory.db'
-  : join(__dirname, '..', 'inventory.db')
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+})
 
-console.log('DB path:', dbPath)
-
-let db
-
-async function getDB() {
-  if (db) return db
-  const SQL = await initSqlJs()
-  if (existsSync(dbPath)) {
-    const fileBuffer = readFileSync(dbPath)
-    db = new SQL.Database(fileBuffer)
-  } else {
-    db = new SQL.Database()
-  }
-  db.run('PRAGMA journal_mode=WAL')
-  db.run('PRAGMA foreign_keys=ON')
-  console.log('Database opened successfully')
-  return db
-}
-
-function saveDB() {
-  if (!db) return
+// Unified query wrapper — returns rows array
+export async function query(sql, params = []) {
+  const client = await pool.connect()
   try {
-    const data = db.export()
-    writeFileSync(dbPath, Buffer.from(data))
-  } catch (err) {
-    console.error('Failed to save database:', err)
+    const res = await client.query(sql, params)
+    return res
+  } finally {
+    client.release()
   }
 }
 
+// Compatibility helpers matching the old sqlite3 API
 export async function run(sql, params = []) {
-  const database = await getDB()
-  try {
-    database.run(sql, params)
-    saveDB()
-    // Get lastID and changes
-    const lastID = database.exec('SELECT last_insert_rowid()')[0]?.values[0][0] || 0
-    const changes = database.exec('SELECT changes()')[0]?.values[0][0] || 0
-    return { lastID, changes }
-  } catch (err) {
-    console.error('SQL run error:', sql, err.message)
-    throw err
+  const res = await query(sql, params)
+  return {
+    lastID: res.rows[0]?.id || null,
+    changes: res.rowCount,
   }
 }
 
 export async function get(sql, params = []) {
-  const database = await getDB()
-  try {
-    const stmt = database.prepare(sql)
-    stmt.bind(params)
-    if (stmt.step()) {
-      const row = stmt.getAsObject()
-      stmt.free()
-      return row
-    }
-    stmt.free()
-    return undefined
-  } catch (err) {
-    console.error('SQL get error:', sql, err.message)
-    throw err
-  }
+  const res = await query(sql, params)
+  return res.rows[0] || undefined
 }
 
 export async function all(sql, params = []) {
-  const database = await getDB()
-  try {
-    const results = []
-    const stmt = database.prepare(sql)
-    stmt.bind(params)
-    while (stmt.step()) {
-      results.push(stmt.getAsObject())
-    }
-    stmt.free()
-    return results
-  } catch (err) {
-    console.error('SQL all error:', sql, err.message)
-    throw err
-  }
+  const res = await query(sql, params)
+  return res.rows
 }
 
 export async function initDB() {
-  await getDB()
+  console.log('Initializing database...')
 
-  try { await run(`ALTER TABLE vendors ADD COLUMN pan_vat TEXT`) } catch {}
-  try { await run(`ALTER TABLE inbound ADD COLUMN vendor_id INTEGER REFERENCES vendors(id)`) } catch {}
-  try { await run(`ALTER TABLE inbound ADD COLUMN fiscal_year_id INTEGER REFERENCES fiscal_years(id)`) } catch {}
-  try { await run(`ALTER TABLE outbound ADD COLUMN fiscal_year_id INTEGER REFERENCES fiscal_years(id)`) } catch {}
-
-  await run(`CREATE TABLE IF NOT EXISTS categories (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+  await query(`CREATE TABLE IF NOT EXISTS categories (
+    id SERIAL PRIMARY KEY,
     name TEXT UNIQUE NOT NULL,
     description TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMPTZ DEFAULT NOW()
   )`)
 
-  await run(`CREATE TABLE IF NOT EXISTS units (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+  await query(`CREATE TABLE IF NOT EXISTS units (
+    id SERIAL PRIMARY KEY,
     name TEXT UNIQUE NOT NULL,
     symbol TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMPTZ DEFAULT NOW()
   )`)
 
-  await run(`CREATE TABLE IF NOT EXISTS vendors (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+  await query(`CREATE TABLE IF NOT EXISTS vendors (
+    id SERIAL PRIMARY KEY,
     name TEXT UNIQUE NOT NULL,
-    pan_vat TEXT UNIQUE NOT NULL,
+    pan_vat TEXT UNIQUE,
     contact_person TEXT,
     phone TEXT,
     email TEXT,
     address TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMPTZ DEFAULT NOW()
   )`)
 
-  await run(`CREATE TABLE IF NOT EXISTS branches (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+  await query(`CREATE TABLE IF NOT EXISTS branches (
+    id SERIAL PRIMARY KEY,
     name TEXT NOT NULL,
     location TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMPTZ DEFAULT NOW()
   )`)
 
-  await run(`CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+  await query(`CREATE TABLE IF NOT EXISTS users (
+    id SERIAL PRIMARY KEY,
     username TEXT NOT NULL,
     email TEXT UNIQUE NOT NULL,
     password TEXT NOT NULL,
     role TEXT NOT NULL CHECK(role IN ('admin','staff')),
-    branch_id INTEGER,
+    branch_id INTEGER REFERENCES branches(id),
     active INTEGER DEFAULT 1,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY(branch_id) REFERENCES branches(id)
+    created_at TIMESTAMPTZ DEFAULT NOW()
   )`)
 
-  await run(`CREATE TABLE IF NOT EXISTS items (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+  await query(`CREATE TABLE IF NOT EXISTS items (
+    id SERIAL PRIMARY KEY,
     item_code TEXT UNIQUE NOT NULL,
     name TEXT NOT NULL,
     category TEXT,
@@ -154,75 +96,69 @@ export async function initDB() {
     vendor_name TEXT,
     vendor_contact TEXT,
     reorder_level REAL DEFAULT 0,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMPTZ DEFAULT NOW()
   )`)
 
-  await run(`CREATE TABLE IF NOT EXISTS inbound (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    item_id INTEGER NOT NULL,
+  await query(`CREATE TABLE IF NOT EXISTS inbound (
+    id SERIAL PRIMARY KEY,
+    item_id INTEGER NOT NULL REFERENCES items(id),
     quantity REAL NOT NULL,
     unit_price REAL NOT NULL,
-    vendor_id INTEGER,
+    vendor_id INTEGER REFERENCES vendors(id),
     vendor_name TEXT,
     invoice_no TEXT,
     invoice_date TEXT,
-    created_by INTEGER,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY(item_id) REFERENCES items(id),
-    FOREIGN KEY(vendor_id) REFERENCES vendors(id),
-    FOREIGN KEY(created_by) REFERENCES users(id)
+    fiscal_year_id INTEGER,
+    created_by INTEGER REFERENCES users(id),
+    created_at TIMESTAMPTZ DEFAULT NOW()
   )`)
 
-  await run(`CREATE TABLE IF NOT EXISTS outbound (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    item_id INTEGER NOT NULL,
+  await query(`CREATE TABLE IF NOT EXISTS outbound (
+    id SERIAL PRIMARY KEY,
+    item_id INTEGER NOT NULL REFERENCES items(id),
     quantity REAL NOT NULL,
-    destination_branch_id INTEGER NOT NULL,
+    destination_branch_id INTEGER NOT NULL REFERENCES branches(id),
     issued_cost REAL NOT NULL,
     reference_no TEXT,
     authorized_by TEXT,
-    created_by INTEGER,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY(item_id) REFERENCES items(id),
-    FOREIGN KEY(destination_branch_id) REFERENCES branches(id),
-    FOREIGN KEY(created_by) REFERENCES users(id)
+    fiscal_year_id INTEGER,
+    created_by INTEGER REFERENCES users(id),
+    created_at TIMESTAMPTZ DEFAULT NOW()
   )`)
 
-  await run(`CREATE TABLE IF NOT EXISTS branch_stock (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    branch_id INTEGER NOT NULL,
-    item_id INTEGER NOT NULL,
+  await query(`CREATE TABLE IF NOT EXISTS branch_stock (
+    id SERIAL PRIMARY KEY,
+    branch_id INTEGER NOT NULL REFERENCES branches(id),
+    item_id INTEGER NOT NULL REFERENCES items(id),
     quantity REAL DEFAULT 0,
-    UNIQUE(branch_id, item_id),
-    FOREIGN KEY(branch_id) REFERENCES branches(id),
-    FOREIGN KEY(item_id) REFERENCES items(id)
+    UNIQUE(branch_id, item_id)
   )`)
 
-  await run(`CREATE TABLE IF NOT EXISTS audit_log (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER,
+  await query(`CREATE TABLE IF NOT EXISTS audit_log (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id),
     action TEXT NOT NULL,
     entity_type TEXT,
     entity_id INTEGER,
     details TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY(user_id) REFERENCES users(id)
+    created_at TIMESTAMPTZ DEFAULT NOW()
   )`)
 
-  await run(`CREATE TABLE IF NOT EXISTS reference_sequence (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+  await query(`CREATE TABLE IF NOT EXISTS reference_sequence (
+    id SERIAL PRIMARY KEY,
     fiscal_year TEXT UNIQUE NOT NULL,
     next_sequence INTEGER DEFAULT 1,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMPTZ DEFAULT NOW()
   )`)
 
-  await run(`CREATE TABLE IF NOT EXISTS fiscal_years (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+  await query(`CREATE TABLE IF NOT EXISTS fiscal_years (
+    id SERIAL PRIMARY KEY,
     name TEXT UNIQUE NOT NULL,
     is_active INTEGER DEFAULT 0,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMPTZ DEFAULT NOW()
   )`)
 
+  // Seed fiscal year
   const existingFY = await get('SELECT id FROM fiscal_years LIMIT 1')
   if (!existingFY) {
     const now = new Date()
@@ -232,45 +168,40 @@ export async function initDB() {
     const bsStart = (fyStart + 56) % 100
     const bsEnd = (bsStart + 1) % 100
     const fyName = `${String(bsStart).padStart(2,'0')}/${String(bsEnd).padStart(2,'0')}`
-    const result = await run(`INSERT INTO fiscal_years (name, is_active) VALUES (?, 1)`, [fyName])
-    await run(`UPDATE inbound SET fiscal_year_id = ? WHERE fiscal_year_id IS NULL`, [result.lastID])
-    await run(`UPDATE outbound SET fiscal_year_id = ? WHERE fiscal_year_id IS NULL`, [result.lastID])
+    await query(`INSERT INTO fiscal_years (name, is_active) VALUES ($1, 1) ON CONFLICT (name) DO NOTHING`, [fyName])
     console.log(`Created default fiscal year: ${fyName}`)
-  } else {
-    const activeFY = await get('SELECT id FROM fiscal_years WHERE is_active = 1')
-    if (activeFY) {
-      await run(`UPDATE inbound SET fiscal_year_id = ? WHERE fiscal_year_id IS NULL`, [activeFY.id])
-      await run(`UPDATE outbound SET fiscal_year_id = ? WHERE fiscal_year_id IS NULL`, [activeFY.id])
-    }
   }
 
+  // Seed data if empty
   const existingUser = await get('SELECT id FROM users LIMIT 1')
   if (!existingUser) {
     console.log('Seeding initial data...')
 
-    await run(`INSERT OR IGNORE INTO categories (name, description) VALUES (?, ?)`, ['Stationery', 'Office stationery items'])
-    await run(`INSERT OR IGNORE INTO categories (name, description) VALUES (?, ?)`, ['Office Equipment', 'Office equipment and furniture'])
-    await run(`INSERT OR IGNORE INTO categories (name, description) VALUES (?, ?)`, ['Computer Supplies', 'Computer accessories and supplies'])
+    await query(`INSERT INTO categories (name, description) VALUES ($1,$2) ON CONFLICT (name) DO NOTHING`, ['Stationery', 'Office stationery items'])
+    await query(`INSERT INTO categories (name, description) VALUES ($1,$2) ON CONFLICT (name) DO NOTHING`, ['Office Equipment', 'Office equipment and furniture'])
+    await query(`INSERT INTO categories (name, description) VALUES ($1,$2) ON CONFLICT (name) DO NOTHING`, ['Computer Supplies', 'Computer accessories and supplies'])
 
-    await run(`INSERT OR IGNORE INTO units (name, symbol) VALUES (?, ?)`, ['Piece', 'pc'])
-    await run(`INSERT OR IGNORE INTO units (name, symbol) VALUES (?, ?)`, ['Box', 'box'])
-    await run(`INSERT OR IGNORE INTO units (name, symbol) VALUES (?, ?)`, ['Ream', 'rm'])
-    await run(`INSERT OR IGNORE INTO units (name, symbol) VALUES (?, ?)`, ['Pack', 'pk'])
-    await run(`INSERT OR IGNORE INTO units (name, symbol) VALUES (?, ?)`, ['Kilogram', 'kg'])
+    await query(`INSERT INTO units (name, symbol) VALUES ($1,$2) ON CONFLICT (name) DO NOTHING`, ['Piece', 'pc'])
+    await query(`INSERT INTO units (name, symbol) VALUES ($1,$2) ON CONFLICT (name) DO NOTHING`, ['Box', 'box'])
+    await query(`INSERT INTO units (name, symbol) VALUES ($1,$2) ON CONFLICT (name) DO NOTHING`, ['Ream', 'rm'])
+    await query(`INSERT INTO units (name, symbol) VALUES ($1,$2) ON CONFLICT (name) DO NOTHING`, ['Pack', 'pk'])
+    await query(`INSERT INTO units (name, symbol) VALUES ($1,$2) ON CONFLICT (name) DO NOTHING`, ['Kilogram', 'kg'])
 
-    await run(`INSERT OR IGNORE INTO branches (id, name, location) VALUES (?, ?, ?)`, [1, 'Head Office', 'Kathmandu'])
-    await run(`INSERT INTO branches (name, location) VALUES (?, ?)`, ['Kathmandu Branch', 'Kathmandu'])
-    await run(`INSERT INTO branches (name, location) VALUES (?, ?)`, ['Pokhara Branch', 'Pokhara'])
+    await query(`INSERT INTO branches (name, location) VALUES ($1,$2) ON CONFLICT DO NOTHING`, ['Head Office', 'Kathmandu'])
+    await query(`INSERT INTO branches (name, location) VALUES ($1,$2)`, ['Kathmandu Branch', 'Kathmandu'])
+    await query(`INSERT INTO branches (name, location) VALUES ($1,$2)`, ['Pokhara Branch', 'Pokhara'])
 
     const hashedPassword = await bcrypt.hash('Admin@123', 10)
-    await run(`INSERT INTO users (username, email, password, role, branch_id, active) VALUES (?, ?, ?, ?, ?, ?)`,
-      ['admin', 'admin@sanimagic.com', hashedPassword, 'admin', 1, 1])
+    const branchRes = await query(`SELECT id FROM branches WHERE name = 'Head Office' LIMIT 1`)
+    const branchId = branchRes.rows[0]?.id || 1
+    await query(`INSERT INTO users (username, email, password, role, branch_id, active) VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT (email) DO NOTHING`,
+      ['admin', 'admin@sanimagic.com', hashedPassword, 'admin', branchId, 1])
 
-    await run(`INSERT INTO items (item_code, name, category, unit, current_qty, weighted_avg_cost, reorder_level) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    await query(`INSERT INTO items (item_code, name, category, unit, current_qty, weighted_avg_cost, reorder_level) VALUES ($1,$2,$3,$4,$5,$6,$7) ON CONFLICT (item_code) DO NOTHING`,
       ['ITM001', 'A4 Paper', 'Stationery', 'Ream', 0, 0, 5])
-    await run(`INSERT INTO items (item_code, name, category, unit, current_qty, weighted_avg_cost, reorder_level) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    await query(`INSERT INTO items (item_code, name, category, unit, current_qty, weighted_avg_cost, reorder_level) VALUES ($1,$2,$3,$4,$5,$6,$7) ON CONFLICT (item_code) DO NOTHING`,
       ['ITM002', 'Blue Pen', 'Stationery', 'Box', 0, 0, 10])
-    await run(`INSERT INTO items (item_code, name, category, unit, current_qty, weighted_avg_cost, reorder_level) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    await query(`INSERT INTO items (item_code, name, category, unit, current_qty, weighted_avg_cost, reorder_level) VALUES ($1,$2,$3,$4,$5,$6,$7) ON CONFLICT (item_code) DO NOTHING`,
       ['ITM003', 'Stapler', 'Office Equipment', 'Piece', 0, 0, 3])
 
     console.log('Seed data inserted successfully')

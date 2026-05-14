@@ -16,7 +16,7 @@ export async function auth(req, res, next) {
 
     const token = authHeader.split(' ')[1]
     const decoded = jwt.verify(token, JWT_SECRET)
-    const user = await get('SELECT * FROM users WHERE id = ? AND active = 1', [decoded.userId])
+    const user = await get('SELECT * FROM users WHERE id = $1 AND active = 1', [decoded.userId])
 
     if (!user) {
       return res.status(401).json({ error: 'User not found or inactive' })
@@ -39,7 +39,7 @@ export function adminOnly(req, res, next) {
 export async function logAction(userId, action, entityType, entityId, details = null) {
   try {
     await run(
-      `INSERT INTO audit_log (user_id, action, entity_type, entity_id, details) VALUES (?, ?, ?, ?, ?)`,
+      `INSERT INTO audit_log (user_id, action, entity_type, entity_id, details) VALUES ($1, $2, $3, $4, $5)`,
       [userId, action, entityType, entityId, typeof details === 'object' ? JSON.stringify(details) : details]
     )
   } catch (err) {

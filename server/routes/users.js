@@ -30,13 +30,13 @@ router.post('/', auth, adminOnly, async (req, res) => {
     }
     const hashed = await bcrypt.hash(password, 10)
     const result = await run(
-      `INSERT INTO users (username, email, password, role, branch_id) VALUES (?, ?, ?, ?, ?)`,
+      `INSERT INTO users (username, email, password, role, branch_id) VALUES ($1, $2, $3, $4, $5) RETURNING id`,
       [username, email, hashed, role, branch_id]
     )
     await logAction(req.user.id, 'CREATE_USER', 'user', result.lastID, `Created user: ${username}`)
     res.status(201).json({ id: result.lastID, username, email, role, message: 'User created successfully' })
   } catch (error) {
-    if (error.message.includes('UNIQUE')) {
+    if (error.message.includes('UNIQUE') || error.message.includes('unique')) {
       return res.status(400).json({ error: 'Email already exists' })
     }
     res.status(500).json({ error: error.message })
@@ -48,14 +48,14 @@ router.put('/:id', auth, adminOnly, async (req, res) => {
     const { id } = req.params
     const { username, email, password, role, branch_id, active } = req.body
 
-    const user = await get('SELECT * FROM users WHERE id = ?', [id])
+    const user = await get('SELECT * FROM users WHERE id = $1', [id])
     if (!user) return res.status(404).json({ error: 'User not found' })
 
     let hashedPassword = user.password
     if (password) hashedPassword = await bcrypt.hash(password, 10)
 
     await run(
-      `UPDATE users SET username = ?, email = ?, password = ?, role = ?, branch_id = ?, active = ? WHERE id = ?`,
+      `UPDATE users SET username = $1, email = $2, password = $3, role = $4, branch_id = $5, active = $6 WHERE id = $7`,
       [username || user.username, email || user.email, hashedPassword,
         role || user.role, branch_id ?? user.branch_id, active ?? user.active, id]
     )
@@ -72,10 +72,10 @@ router.delete('/:id', auth, adminOnly, async (req, res) => {
     if (parseInt(id) === req.user.id) {
       return res.status(400).json({ error: 'Cannot deactivate your own account' })
     }
-    const user = await get('SELECT * FROM users WHERE id = ?', [id])
+    const user = await get('SELECT * FROM users WHERE id = $1', [id])
     if (!user) return res.status(404).json({ error: 'User not found' })
 
-    await run('UPDATE users SET active = 0 WHERE id = ?', [id])
+    await run('UPDATE users SET active = 0 WHERE id = $1', [id])
     await logAction(req.user.id, 'DEACTIVATE_USER', 'user', id, `Deactivated user: ${user.username}`)
     res.json({ message: 'User deactivated successfully' })
   } catch (error) {

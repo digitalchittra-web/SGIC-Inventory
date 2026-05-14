@@ -21,7 +21,7 @@ router.post('/', auth, adminOnly, async (req, res) => {
     if (!name) return res.status(400).json({ error: 'Branch name is required' })
 
     const result = await run(
-      `INSERT INTO branches (name, location) VALUES (?, ?)`,
+      `INSERT INTO branches (name, location) VALUES ($1, $2) RETURNING id`,
       [name, location || null]
     )
 
@@ -29,7 +29,7 @@ router.post('/', auth, adminOnly, async (req, res) => {
 
     res.status(201).json({ id: result.lastID, name, location: location || null, message: 'Branch created successfully' })
   } catch (error) {
-    if (error.message.includes('UNIQUE')) {
+    if (error.message.includes('UNIQUE') || error.message.includes('unique')) {
       return res.status(400).json({ error: 'Branch name already exists' })
     }
     res.status(500).json({ error: error.message })
@@ -43,10 +43,10 @@ router.put('/:id', auth, adminOnly, async (req, res) => {
     const { id } = req.params
     if (!name) return res.status(400).json({ error: 'Branch name is required' })
 
-    const branch = await get('SELECT id FROM branches WHERE id = ?', [id])
+    const branch = await get('SELECT id FROM branches WHERE id = $1', [id])
     if (!branch) return res.status(404).json({ error: 'Branch not found' })
 
-    await run(`UPDATE branches SET name = ?, location = ? WHERE id = ?`, [name, location || null, id])
+    await run(`UPDATE branches SET name = $1, location = $2 WHERE id = $3`, [name, location || null, id])
 
     await logAction(req.user.id, 'UPDATE', 'branch', id, `Updated branch to: ${name}`)
 
@@ -61,17 +61,17 @@ router.delete('/:id', auth, adminOnly, async (req, res) => {
   try {
     const { id } = req.params
 
-    const branch = await get('SELECT * FROM branches WHERE id = ?', [id])
+    const branch = await get('SELECT * FROM branches WHERE id = $1', [id])
     if (!branch) return res.status(404).json({ error: 'Branch not found' })
 
     // Check for outbound transfers referencing this branch
-    const usedInOutbound = await get('SELECT id FROM outbound WHERE destination_branch_id = ? LIMIT 1', [id])
+    const usedInOutbound = await get('SELECT id FROM outbound WHERE destination_branch_id = $1 LIMIT 1', [id])
     if (usedInOutbound) {
       return res.status(400).json({ error: 'Cannot delete branch: it has outbound transfer records' })
     }
 
-    await run('DELETE FROM branch_stock WHERE branch_id = ?', [id])
-    await run('DELETE FROM branches WHERE id = ?', [id])
+    await run('DELETE FROM branch_stock WHERE branch_id = $1', [id])
+    await run('DELETE FROM branches WHERE id = $1', [id])
 
     await logAction(req.user.id, 'DELETE', 'branch', id, `Deleted branch: ${branch.name}`)
 

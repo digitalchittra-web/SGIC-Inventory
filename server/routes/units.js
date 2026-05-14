@@ -18,11 +18,11 @@ router.post('/', auth, adminOnly, async (req, res) => {
     const { name, symbol } = req.body
     if (!name) return res.status(400).json({ error: 'Unit name is required' })
 
-    const dup = await get('SELECT id FROM units WHERE name = ?', [name])
+    const dup = await get('SELECT id FROM units WHERE name = $1', [name])
     if (dup) return res.status(400).json({ error: 'Unit name already exists' })
 
     const result = await run(
-      `INSERT INTO units (name, symbol) VALUES (?, ?)`,
+      `INSERT INTO units (name, symbol) VALUES ($1, $2) RETURNING id`,
       [name, symbol || null]
     )
     await logAction(req.user.id, 'CREATE', 'unit', result.lastID, `Created unit: ${name}`)
@@ -38,14 +38,14 @@ router.put('/:id', auth, adminOnly, async (req, res) => {
     const { name, symbol } = req.body
     if (!name) return res.status(400).json({ error: 'Unit name is required' })
 
-    const unit = await get('SELECT id FROM units WHERE id = ?', [id])
+    const unit = await get('SELECT id FROM units WHERE id = $1', [id])
     if (!unit) return res.status(404).json({ error: 'Unit not found' })
 
-    const dup = await get('SELECT id FROM units WHERE name = ? AND id != ?', [name, id])
+    const dup = await get('SELECT id FROM units WHERE name = $1 AND id != $2', [name, id])
     if (dup) return res.status(400).json({ error: 'Unit name already exists' })
 
     await run(
-      `UPDATE units SET name = ?, symbol = ? WHERE id = ?`,
+      `UPDATE units SET name = $1, symbol = $2 WHERE id = $3`,
       [name, symbol || null, id]
     )
     await logAction(req.user.id, 'UPDATE', 'unit', id, `Updated unit: ${name}`)
@@ -58,10 +58,10 @@ router.put('/:id', auth, adminOnly, async (req, res) => {
 router.delete('/:id', auth, adminOnly, async (req, res) => {
   try {
     const { id } = req.params
-    const unit = await get('SELECT * FROM units WHERE id = ?', [id])
+    const unit = await get('SELECT * FROM units WHERE id = $1', [id])
     if (!unit) return res.status(404).json({ error: 'Unit not found' })
 
-    await run('DELETE FROM units WHERE id = ?', [id])
+    await run('DELETE FROM units WHERE id = $1', [id])
     await logAction(req.user.id, 'DELETE', 'unit', id, `Deleted unit: ${unit.name}`)
     res.json({ message: 'Unit deleted successfully' })
   } catch (error) {

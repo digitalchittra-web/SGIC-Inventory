@@ -18,11 +18,11 @@ router.post('/', auth, adminOnly, async (req, res) => {
     const { name, description } = req.body
     if (!name) return res.status(400).json({ error: 'Category name is required' })
 
-    const dup = await get('SELECT id FROM categories WHERE name = ?', [name])
+    const dup = await get('SELECT id FROM categories WHERE name = $1', [name])
     if (dup) return res.status(400).json({ error: 'Category name already exists' })
 
     const result = await run(
-      `INSERT INTO categories (name, description) VALUES (?, ?)`,
+      `INSERT INTO categories (name, description) VALUES ($1, $2) RETURNING id`,
       [name, description || null]
     )
     await logAction(req.user.id, 'CREATE', 'category', result.lastID, `Created category: ${name}`)
@@ -38,14 +38,14 @@ router.put('/:id', auth, adminOnly, async (req, res) => {
     const { name, description } = req.body
     if (!name) return res.status(400).json({ error: 'Category name is required' })
 
-    const cat = await get('SELECT id FROM categories WHERE id = ?', [id])
+    const cat = await get('SELECT id FROM categories WHERE id = $1', [id])
     if (!cat) return res.status(404).json({ error: 'Category not found' })
 
-    const dup = await get('SELECT id FROM categories WHERE name = ? AND id != ?', [name, id])
+    const dup = await get('SELECT id FROM categories WHERE name = $1 AND id != $2', [name, id])
     if (dup) return res.status(400).json({ error: 'Category name already exists' })
 
     await run(
-      `UPDATE categories SET name = ?, description = ? WHERE id = ?`,
+      `UPDATE categories SET name = $1, description = $2 WHERE id = $3`,
       [name, description || null, id]
     )
     await logAction(req.user.id, 'UPDATE', 'category', id, `Updated category: ${name}`)
@@ -58,10 +58,10 @@ router.put('/:id', auth, adminOnly, async (req, res) => {
 router.delete('/:id', auth, adminOnly, async (req, res) => {
   try {
     const { id } = req.params
-    const cat = await get('SELECT * FROM categories WHERE id = ?', [id])
+    const cat = await get('SELECT * FROM categories WHERE id = $1', [id])
     if (!cat) return res.status(404).json({ error: 'Category not found' })
 
-    await run('DELETE FROM categories WHERE id = ?', [id])
+    await run('DELETE FROM categories WHERE id = $1', [id])
     await logAction(req.user.id, 'DELETE', 'category', id, `Deleted category: ${cat.name}`)
     res.json({ message: 'Category deleted successfully' })
   } catch (error) {

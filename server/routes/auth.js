@@ -14,7 +14,7 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ error: 'Email and password are required' })
     }
 
-    const user = await get('SELECT * FROM users WHERE email = ? AND active = 1', [email])
+    const user = await get('SELECT * FROM users WHERE email = $1 AND active = 1', [email])
 
     if (!user) {
       return res.status(401).json({ error: 'Invalid email or password' })
@@ -67,7 +67,7 @@ router.post('/register', async (req, res, next) => {
 
     const hashed = await bcrypt.hash(password, 10)
     const result = await run(
-      `INSERT INTO users (username, email, password, role, branch_id) VALUES (?, ?, ?, ?, ?)`,
+      `INSERT INTO users (username, email, password, role, branch_id) VALUES ($1, $2, $3, $4, $5) RETURNING id`,
       [username, email, hashed, role, branch_id]
     )
 
@@ -77,7 +77,7 @@ router.post('/register', async (req, res, next) => {
 
     res.status(201).json({ id: result.lastID, username, email, role, branch_id, message: 'User registered successfully' })
   } catch (error) {
-    if (error.message.includes('UNIQUE')) {
+    if (error.message.includes('UNIQUE') || error.message.includes('unique')) {
       return res.status(400).json({ error: 'Email already exists' })
     }
     res.status(500).json({ error: error.message })

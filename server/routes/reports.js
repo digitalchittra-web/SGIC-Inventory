@@ -33,10 +33,11 @@ router.get('/transfers', auth, adminOnly, async (req, res) => {
       WHERE 1=1
     `
     const params = []
-    if (branchId) { sql += ' AND ob.destination_branch_id = ?'; params.push(branchId) }
-    if (itemId) { sql += ' AND ob.item_id = ?'; params.push(itemId) }
-    if (from) { sql += ' AND DATE(ob.created_at) >= ?'; params.push(from) }
-    if (to) { sql += ' AND DATE(ob.created_at) <= ?'; params.push(to) }
+    let paramIndex = 1
+    if (branchId) { sql += ` AND ob.destination_branch_id = $${paramIndex++}`; params.push(branchId) }
+    if (itemId) { sql += ` AND ob.item_id = $${paramIndex++}`; params.push(itemId) }
+    if (from) { sql += ` AND DATE(ob.created_at) >= $${paramIndex++}`; params.push(from) }
+    if (to) { sql += ` AND DATE(ob.created_at) <= $${paramIndex++}`; params.push(to) }
     sql += ' ORDER BY ob.created_at DESC'
 
     const records = await all(sql, params)
@@ -69,10 +70,11 @@ router.get('/activity', auth, adminOnly, async (req, res) => {
       WHERE 1=1
     `
     const params = []
-    if (userId) { sql += ' AND al.user_id = ?'; params.push(userId) }
-    if (action) { sql += ' AND al.action = ?'; params.push(action) }
-    if (from) { sql += ' AND DATE(al.created_at) >= ?'; params.push(from) }
-    if (to) { sql += ' AND DATE(al.created_at) <= ?'; params.push(to) }
+    let paramIndex = 1
+    if (userId) { sql += ` AND al.user_id = $${paramIndex++}`; params.push(userId) }
+    if (action) { sql += ` AND al.action = $${paramIndex++}`; params.push(action) }
+    if (from) { sql += ` AND DATE(al.created_at) >= $${paramIndex++}`; params.push(from) }
+    if (to) { sql += ` AND DATE(al.created_at) <= $${paramIndex++}`; params.push(to) }
     sql += ' ORDER BY al.created_at DESC LIMIT 500'
 
     const logs = await all(sql, params)
@@ -95,10 +97,11 @@ router.get('/inbound-history', auth, adminOnly, async (req, res) => {
       WHERE 1=1
     `
     const params = []
-    if (itemId) { sql += ' AND ib.item_id = ?'; params.push(itemId) }
-    if (vendorName) { sql += ' AND ib.vendor_name LIKE ?'; params.push(`%${vendorName}%`) }
-    if (from) { sql += ' AND DATE(COALESCE(ib.invoice_date, ib.created_at)) >= ?'; params.push(from) }
-    if (to) { sql += ' AND DATE(COALESCE(ib.invoice_date, ib.created_at)) <= ?'; params.push(to) }
+    let paramIndex = 1
+    if (itemId) { sql += ` AND ib.item_id = $${paramIndex++}`; params.push(itemId) }
+    if (vendorName) { sql += ` AND ib.vendor_name LIKE $${paramIndex++}`; params.push(`%${vendorName}%`) }
+    if (from) { sql += ` AND DATE(COALESCE(ib.invoice_date, ib.created_at)) >= $${paramIndex++}`; params.push(from) }
+    if (to) { sql += ` AND DATE(COALESCE(ib.invoice_date, ib.created_at)) <= $${paramIndex++}`; params.push(to) }
     sql += ' ORDER BY ib.created_at DESC'
 
     const records = await all(sql, params)
