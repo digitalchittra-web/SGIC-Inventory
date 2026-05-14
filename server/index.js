@@ -11,11 +11,20 @@ import reportRoutes from './routes/reports.js'
 import vendorRoutes from './routes/vendors.js'
 import categoryRoutes from './routes/categories.js'
 import unitRoutes from './routes/units.js'
+import fiscalYearRoutes from './routes/fiscalYears.js'
 
 const app = express()
-const PORT = 3001
+const PORT = process.env.PORT || 3001
 
-app.use(cors())
+app.use(cors({
+  origin: [
+    'http://localhost:5173',
+    'http://localhost:4173',
+    'https://sgic-inventory-mq7m.vercel.app',
+    /\.vercel\.app$/,
+  ],
+  credentials: true,
+}))
 app.use(express.json())
 
 app.use('/api/auth', authRoutes)
@@ -28,13 +37,22 @@ app.use('/api/reports', reportRoutes)
 app.use('/api/vendors', vendorRoutes)
 app.use('/api/categories', categoryRoutes)
 app.use('/api/units', unitRoutes)
+app.use('/api/fiscal-years', fiscalYearRoutes)
 
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }))
 
 initDB()
   .then(() => {
-    app.listen(PORT, () => {
+    const server = app.listen(PORT, () => {
       console.log(`Server running on http://localhost:${PORT}`)
+    })
+
+    server.on('error', (err) => {
+      if (err.code === 'EADDRINUSE') {
+        console.error(`Port ${PORT} is already in use. Please close other instances and try again.`)
+        process.exit(1)
+      }
+      throw err
     })
   })
   .catch((err) => {

@@ -1,7 +1,7 @@
 import jwt from 'jsonwebtoken'
 import { get, run } from './db.js'
 
-const JWT_SECRET = 'sanima-secret-2024'
+const JWT_SECRET = process.env.JWT_SECRET || 'sanima-secret-2024'
 
 export function generateToken(userId) {
   return jwt.sign({ userId }, JWT_SECRET, { expiresIn: '24h' })
