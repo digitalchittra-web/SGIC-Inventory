@@ -21,7 +21,7 @@ export function run(sql, params = []) {
   return new Promise((resolve, reject) => {
     try {
       const stmt = db.prepare(sql)
-      const result = stmt.run(params)
+      const result = stmt.run(...params)
       resolve({ lastID: result.lastInsertRowid, changes: result.changes })
     } catch (err) {
       reject(err)
@@ -33,7 +33,7 @@ export function get(sql, params = []) {
   return new Promise((resolve, reject) => {
     try {
       const stmt = db.prepare(sql)
-      resolve(stmt.get(params))
+      resolve(stmt.get(...params))
     } catch (err) {
       reject(err)
     }
@@ -44,7 +44,7 @@ export function all(sql, params = []) {
   return new Promise((resolve, reject) => {
     try {
       const stmt = db.prepare(sql)
-      resolve(stmt.all(params))
+      resolve(stmt.all(...params))
     } catch (err) {
       reject(err)
     }
