@@ -1,4 +1,4 @@
-import sqlite3 from 'sqlite3'
+import Database from 'better-sqlite3'
 import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
 import bcrypt from 'bcrypt'
@@ -8,45 +8,65 @@ const __dirname = dirname(__filename)
 
 const dbPath = join(__dirname, '..', 'inventory.db')
 
-export const db = new sqlite3.Database(dbPath, (err) => {
-  if (err) {
-    console.error('Error opening database:', err)
-  } else {
-    console.log('Connected to SQLite database at', dbPath)
-  }
-})
+export const db = new Database(dbPath)
 
-db.run('PRAGMA journal_mode=WAL')
-db.run('PRAGMA foreign_keys=ON')
+db.pragma('journal_mode = WAL')
+db.pragma('foreign_keys = ON')
 
+// Wrap in Promises to keep the same async API used by all routes
 export function run(sql, params = []) {
   return new Promise((resolve, reject) => {
-    db.run(sql, params, function (err) {
-      if (err) reject(err)
-      else resolve({ lastID: this.lastID, changes: this.changes })
-    })
+    try {
+      const stmt = db.prepare(sql)
+      const result = stmt.run(params)
+      resolve({ lastID: result.lastInsertRowid, changes: result.changes })
+    } catch (err) {
+      reject(err)
+    }
   })
 }
 
 export function get(sql, params = []) {
   return new Promise((resolve, reject) => {
-    db.get(sql, params, function (err, row) {
-      if (err) reject(err)
-      else resolve(row)
-    })
+    try {
+      const stmt = db.prepare(sql)
+      resolve(stmt.get(params))
+    } catch (err) {
+      reject(err)
+    }
   })
 }
 
 export function all(sql, params = []) {
   return new Promise((resolve, reject) => {
-    db.all(sql, params, function (err, rows) {
-      if (err) reject(err)
-      else resolve(rows)
-    })
+    try {
+      const stmt = db.prepare(sql)
+      resolve(stmt.all(params))
+    } catch (err) {
+      reject(err)
+    }
   })
 }
 
 export async function initDB() {
+  // Migration: Add pan_vat column if it doesn't exist (allow NULL initially for existing vendors)
+  try {
+    await run(`ALTER TABLE vendors ADD COLUMN pan_vat TEXT`)
+  } catch (err) {
+    // Column likely already exists, ignore error
+  }
+
+  // Migration: Add vendor_id column to inbound if it doesn't exist
+  try {
+    await run(`ALTER TABLE inbound ADD COLUMN vendor_id INTEGER REFERENCES vendors(id)`)
+  } catch (err) {
+    // Column likely already exists, ignore error
+  }
+
+  // Migration: Add fiscal_year_id to inbound and outbound
+  try { await run(`ALTER TABLE inbound ADD COLUMN fiscal_year_id INTEGER REFERENCES fiscal_years(id)`) } catch {}
+  try { await run(`ALTER TABLE outbound ADD COLUMN fiscal_year_id INTEGER REFERENCES fiscal_years(id)`) } catch {}
+
   await run(`CREATE TABLE IF NOT EXISTS categories (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT UNIQUE NOT NULL,
@@ -64,6 +84,7 @@ export async function initDB() {
   await run(`CREATE TABLE IF NOT EXISTS vendors (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT UNIQUE NOT NULL,
+    pan_vat TEXT UNIQUE NOT NULL,
     contact_person TEXT,
     phone TEXT,
     email TEXT,
@@ -110,12 +131,14 @@ export async function initDB() {
     item_id INTEGER NOT NULL,
     quantity REAL NOT NULL,
     unit_price REAL NOT NULL,
+    vendor_id INTEGER,
     vendor_name TEXT,
     invoice_no TEXT,
     invoice_date TEXT,
     created_by INTEGER,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY(item_id) REFERENCES items(id),
+    FOREIGN KEY(vendor_id) REFERENCES vendors(id),
     FOREIGN KEY(created_by) REFERENCES users(id)
   )`)
 
@@ -155,17 +178,51 @@ export async function initDB() {
     FOREIGN KEY(user_id) REFERENCES users(id)
   )`)
 
+  await run(`CREATE TABLE IF NOT EXISTS reference_sequence (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    fiscal_year TEXT UNIQUE NOT NULL,
+    next_sequence INTEGER DEFAULT 1,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )`)
+
+  await run(`CREATE TABLE IF NOT EXISTS fiscal_years (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT UNIQUE NOT NULL,
+    is_active INTEGER DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )`)
+
+  // Ensure at least one active fiscal year exists
+  const existingFY = await get('SELECT id FROM fiscal_years LIMIT 1')
+  if (!existingFY) {
+    const now = new Date()
+    const m = now.getMonth() + 1
+    const y = now.getFullYear()
+    const fyStart = m >= 4 ? y : y - 1
+    const bsStart = (fyStart + 56) % 100
+    const bsEnd = (bsStart + 1) % 100
+    const fyName = `${String(bsStart).padStart(2,'0')}/${String(bsEnd).padStart(2,'0')}`
+    const result = await run(`INSERT INTO fiscal_years (name, is_active) VALUES (?, 1)`, [fyName])
+    await run(`UPDATE inbound SET fiscal_year_id = ? WHERE fiscal_year_id IS NULL`, [result.lastID])
+    await run(`UPDATE outbound SET fiscal_year_id = ? WHERE fiscal_year_id IS NULL`, [result.lastID])
+    console.log(`Created default fiscal year: ${fyName}`)
+  } else {
+    const activeFY = await get('SELECT id FROM fiscal_years WHERE is_active = 1')
+    if (activeFY) {
+      await run(`UPDATE inbound SET fiscal_year_id = ? WHERE fiscal_year_id IS NULL`, [activeFY.id])
+      await run(`UPDATE outbound SET fiscal_year_id = ? WHERE fiscal_year_id IS NULL`, [activeFY.id])
+    }
+  }
+
   // Seed data if empty
   const existingUser = await get('SELECT id FROM users LIMIT 1')
   if (!existingUser) {
     console.log('Seeding initial data...')
 
-    // Seed categories
     await run(`INSERT OR IGNORE INTO categories (name, description) VALUES ('Stationery', 'Office stationery items')`)
     await run(`INSERT OR IGNORE INTO categories (name, description) VALUES ('Office Equipment', 'Office equipment and furniture')`)
     await run(`INSERT OR IGNORE INTO categories (name, description) VALUES ('Computer Supplies', 'Computer accessories and supplies')`)
 
-    // Seed units
     await run(`INSERT OR IGNORE INTO units (name, symbol) VALUES ('Piece', 'pc')`)
     await run(`INSERT OR IGNORE INTO units (name, symbol) VALUES ('Box', 'box')`)
     await run(`INSERT OR IGNORE INTO units (name, symbol) VALUES ('Ream', 'rm')`)
