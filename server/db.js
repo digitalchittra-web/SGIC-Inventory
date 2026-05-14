@@ -1,4 +1,3 @@
-import Database from 'better-sqlite3'
 import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
 import bcrypt from 'bcryptjs'
@@ -11,62 +10,64 @@ const dbPath = process.env.NODE_ENV === 'production'
   : join(__dirname, '..', 'inventory.db')
 
 console.log('DB path:', dbPath)
-export const db = new Database(dbPath)
 
-db.pragma('journal_mode = WAL')
-db.pragma('foreign_keys = ON')
+let db
 
-// Wrap in Promises to keep the same async API used by all routes
-export function run(sql, params = []) {
-  return new Promise((resolve, reject) => {
-    try {
-      const stmt = db.prepare(sql)
-      const result = stmt.run(...params)
-      resolve({ lastID: result.lastInsertRowid, changes: result.changes })
-    } catch (err) {
-      reject(err)
-    }
-  })
+async function getDB() {
+  if (db) return db
+  try {
+    const Database = (await import('better-sqlite3')).default
+    db = new Database(dbPath)
+    db.pragma('journal_mode = WAL')
+    db.pragma('foreign_keys = ON')
+    console.log('Database opened successfully')
+    return db
+  } catch (err) {
+    console.error('Failed to open database:', err)
+    throw err
+  }
 }
 
-export function get(sql, params = []) {
-  return new Promise((resolve, reject) => {
-    try {
-      const stmt = db.prepare(sql)
-      resolve(stmt.get(...params))
-    } catch (err) {
-      reject(err)
-    }
-  })
+export async function run(sql, params = []) {
+  const database = await getDB()
+  try {
+    const stmt = database.prepare(sql)
+    const result = stmt.run(...params)
+    return { lastID: result.lastInsertRowid, changes: result.changes }
+  } catch (err) {
+    console.error('SQL run error:', sql, params, err.message)
+    throw err
+  }
 }
 
-export function all(sql, params = []) {
-  return new Promise((resolve, reject) => {
-    try {
-      const stmt = db.prepare(sql)
-      resolve(stmt.all(...params))
-    } catch (err) {
-      reject(err)
-    }
-  })
+export async function get(sql, params = []) {
+  const database = await getDB()
+  try {
+    const stmt = database.prepare(sql)
+    return stmt.get(...params)
+  } catch (err) {
+    console.error('SQL get error:', sql, params, err.message)
+    throw err
+  }
+}
+
+export async function all(sql, params = []) {
+  const database = await getDB()
+  try {
+    const stmt = database.prepare(sql)
+    return stmt.all(...params)
+  } catch (err) {
+    console.error('SQL all error:', sql, params, err.message)
+    throw err
+  }
 }
 
 export async function initDB() {
-  // Migration: Add pan_vat column if it doesn't exist (allow NULL initially for existing vendors)
-  try {
-    await run(`ALTER TABLE vendors ADD COLUMN pan_vat TEXT`)
-  } catch (err) {
-    // Column likely already exists, ignore error
-  }
+  await getDB() // ensure DB is open
 
-  // Migration: Add vendor_id column to inbound if it doesn't exist
-  try {
-    await run(`ALTER TABLE inbound ADD COLUMN vendor_id INTEGER REFERENCES vendors(id)`)
-  } catch (err) {
-    // Column likely already exists, ignore error
-  }
-
-  // Migration: Add fiscal_year_id to inbound and outbound
+  // Migration: Add pan_vat column if it doesn't exist
+  try { await run(`ALTER TABLE vendors ADD COLUMN pan_vat TEXT`) } catch {}
+  try { await run(`ALTER TABLE inbound ADD COLUMN vendor_id INTEGER REFERENCES vendors(id)`) } catch {}
   try { await run(`ALTER TABLE inbound ADD COLUMN fiscal_year_id INTEGER REFERENCES fiscal_years(id)`) } catch {}
   try { await run(`ALTER TABLE outbound ADD COLUMN fiscal_year_id INTEGER REFERENCES fiscal_years(id)`) } catch {}
 
@@ -195,7 +196,6 @@ export async function initDB() {
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )`)
 
-  // Ensure at least one active fiscal year exists
   const existingFY = await get('SELECT id FROM fiscal_years LIMIT 1')
   if (!existingFY) {
     const now = new Date()
@@ -217,7 +217,6 @@ export async function initDB() {
     }
   }
 
-  // Seed data if empty
   const existingUser = await get('SELECT id FROM users LIMIT 1')
   if (!existingUser) {
     console.log('Seeding initial data...')
@@ -242,19 +241,15 @@ export async function initDB() {
       ['admin', 'admin@sanimagic.com', hashedPassword, 'admin', 1, 1]
     )
 
-    await run(
-      `INSERT INTO items (item_code, name, category, unit, current_qty, weighted_avg_cost, reorder_level) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      ['ITM001', 'A4 Paper', 'Stationery', 'Ream', 0, 0, 5]
-    )
-    await run(
-      `INSERT INTO items (item_code, name, category, unit, current_qty, weighted_avg_cost, reorder_level) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      ['ITM002', 'Blue Pen', 'Stationery', 'Box', 0, 0, 10]
-    )
-    await run(
-      `INSERT INTO items (item_code, name, category, unit, current_qty, weighted_avg_cost, reorder_level) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      ['ITM003', 'Stapler', 'Office Equipment', 'Piece', 0, 0, 3]
-    )
+    await run(`INSERT INTO items (item_code, name, category, unit, current_qty, weighted_avg_cost, reorder_level) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      ['ITM001', 'A4 Paper', 'Stationery', 'Ream', 0, 0, 5])
+    await run(`INSERT INTO items (item_code, name, category, unit, current_qty, weighted_avg_cost, reorder_level) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      ['ITM002', 'Blue Pen', 'Stationery', 'Box', 0, 0, 10])
+    await run(`INSERT INTO items (item_code, name, category, unit, current_qty, weighted_avg_cost, reorder_level) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      ['ITM003', 'Stapler', 'Office Equipment', 'Piece', 0, 0, 3])
 
     console.log('Seed data inserted successfully')
   }
+
+  console.log('Database initialized successfully')
 }
