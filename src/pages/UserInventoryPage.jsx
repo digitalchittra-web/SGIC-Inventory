@@ -79,9 +79,9 @@ export default function UserInventoryPage() {
             <tr key={item.id}>
               <td>
                 <strong>{item.name}</strong>
-                <span style={{ color: '#9ca3af', fontSize: 12, marginLeft: 6 }}>
-                  {item.unit ? `Available [${item.unit}]` : 'Available'}
-                </span>
+                {item.unit && <span style={{ color: '#9ca3af', fontSize: 12, marginLeft: 6 }}>
+                  [{item.unit}]
+                </span>}
               </td>
               <td>{item.category || '—'}</td>
               <td>{item.unit ? `[${item.unit}]` : '—'}</td>

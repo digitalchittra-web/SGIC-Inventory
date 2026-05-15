@@ -27,8 +27,8 @@ export default function ItemPicker({
     if (item.current_qty !== undefined) {
       const unitText = item.unit ? ` [${item.unit}]` : ''
       if (hideQuantity) {
-        // For users: show only unit without quantity
-        parts.push(unitText ? `Available${unitText}` : 'Available')
+        // For users: show only unit without quantity or "Available" text
+        if (unitText) parts.push(unitText)
       } else {
         // For admins: show full availability with quantity
         parts.push(`Available: ${item.current_qty}${unitText}`)
