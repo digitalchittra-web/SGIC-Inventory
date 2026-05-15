@@ -127,6 +127,7 @@ router.post('/', auth, async (req, res) => {
     await logAction(req.user.id, 'CREATE', 'requisition', reqId, `Created requisition with ${items.length} item(s)`)
     res.status(201).json({ id: reqId, message: 'Requisition submitted' })
   } catch (err) {
+    console.error('Requisition submission error:', err)
     res.status(500).json({ error: err.message })
   }
 })
