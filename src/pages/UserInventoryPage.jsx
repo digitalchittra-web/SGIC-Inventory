@@ -26,7 +26,7 @@ export default function UserInventoryPage() {
   const filtered = sortRows(
     items.filter(i => {
       const q = search.toLowerCase()
-      const matchSearch = !q || i.name.toLowerCase().includes(q) || (i.category || '').toLowerCase().includes(q)
+      const matchSearch = !q || i.name.toLowerCase().includes(q) || (i.item_code || '').toLowerCase().includes(q) || (i.category || '').toLowerCase().includes(q)
       const matchCat = !catFilter || i.category === catFilter
       return matchSearch && matchCat
     }),
@@ -66,6 +66,7 @@ export default function UserInventoryPage() {
       <table className="table">
         <thead>
           <tr>
+            <SortTh col="item_code" label="Code" sortCol={sortCol} sortDir={sortDir} onSort={onSort} />
             <SortTh col="name" label="Name" sortCol={sortCol} sortDir={sortDir} onSort={onSort} />
             <SortTh col="category" label="Category" sortCol={sortCol} sortDir={sortDir} onSort={onSort} />
             <SortTh col="unit" label="Unit" sortCol={sortCol} sortDir={sortDir} onSort={onSort} />
@@ -73,16 +74,12 @@ export default function UserInventoryPage() {
         </thead>
         <tbody>
           {filtered.length === 0 && (
-            <tr><td colSpan={3} className="empty-row">No items found.</td></tr>
+            <tr><td colSpan={4} className="empty-row">No items found.</td></tr>
           )}
           {filtered.map(item => (
             <tr key={item.id}>
-              <td>
-                <strong>{item.name}</strong>
-                {item.unit && <span style={{ color: '#9ca3af', fontSize: 12, marginLeft: 6 }}>
-                  [{item.unit}]
-                </span>}
-              </td>
+              <td style={{ fontFamily: 'monospace', color: '#185FA5' }}>{item.item_code}</td>
+              <td><strong>{item.name}</strong></td>
               <td>{item.category || '—'}</td>
               <td>{item.unit ? `[${item.unit}]` : '—'}</td>
             </tr>
