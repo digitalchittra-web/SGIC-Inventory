@@ -4,7 +4,7 @@ import { useAuth } from '../store.jsx'
 const navItems = [
   { to: '/dashboard', label: 'Dashboard', icon: '⊞' },
   { to: '/requisitions', label: 'Requisitions', icon: '📋' },
-  { to: '/inventory', label: 'Inventory', icon: '📦', adminOnly: true },
+  { to: '/inventory', label: 'Inventory', icon: '📦' },
   { to: '/inbound', label: 'Inbound (Purchase)', icon: '↓', adminOnly: true },
   { to: '/outbound', label: 'Outbound (Transfer)', icon: '↑', adminOnly: true },
   { to: '/branches', label: 'Branches', icon: '🏢' },
