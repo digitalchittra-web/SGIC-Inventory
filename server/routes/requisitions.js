@@ -101,10 +101,20 @@ router.post('/', auth, async (req, res) => {
     if (!items || items.length === 0) return res.status(400).json({ error: 'At least one item required' })
 
     // Validate each item
-    for (const item of items) {
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i]
+      if (!item.itemId) {
+        return res.status(400).json({ error: `Row ${i + 1}: Please select an item` })
+      }
+      if (!item.quantity || item.quantity === '') {
+        return res.status(400).json({ error: `Row ${i + 1}: Please enter a quantity` })
+      }
       const qty = parseInt(item.quantity)
-      if (!item.itemId || !item.quantity || isNaN(qty) || qty < 1) {
-        return res.status(400).json({ error: 'Each item needs itemId and quantity >= 1' })
+      if (isNaN(qty)) {
+        return res.status(400).json({ error: `Row ${i + 1}: Quantity must be a number, got "${item.quantity}"` })
+      }
+      if (qty < 1) {
+        return res.status(400).json({ error: `Row ${i + 1}: Quantity must be at least 1` })
       }
     }
 
@@ -113,6 +123,10 @@ router.post('/', auth, async (req, res) => {
       [req.user.id, remarks || null]
     )
     const reqId = result.lastID
+
+    if (!reqId) {
+      return res.status(500).json({ error: 'Failed to create requisition - database error' })
+    }
 
     for (const item of items) {
       const dbItem = await get('SELECT id, name, item_code, unit FROM items WHERE id = $1', [item.itemId])
