@@ -105,6 +105,21 @@ export default function ReportsPage() {
   const categories = [...new Set(items.map(i => i.category).filter(Boolean))]
   const actionTypes = ['LOGIN', 'CREATE', 'UPDATE', 'DELETE', 'INBOUND', 'OUTBOUND', 'EDIT_INBOUND', 'DELETE_INBOUND', 'CREATE_USER', 'UPDATE_USER', 'DEACTIVATE_USER']
 
+  function exportCSV(filename, headers, rows) {
+    const escape = v => {
+      const s = v === null || v === undefined ? '' : String(v)
+      return s.includes(',') || s.includes('"') || s.includes('\n')
+        ? `"${s.replace(/"/g, '""')}"` : s
+    }
+    const csv = [headers, ...rows].map(r => r.map(escape).join(',')).join('\r\n')
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(blob)
+    a.download = filename
+    a.click()
+    URL.revokeObjectURL(a.href)
+  }
+
   const filteredStock = sortRows(
     (data.stock || []).filter(i => {
       const q = stockSearch.toLowerCase()
@@ -141,6 +156,11 @@ export default function ReportsPage() {
               {categories.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
             <button className="btn btn-secondary" onClick={loadStock}>↻ Refresh</button>
+            <button className="btn btn-secondary" onClick={() => exportCSV(
+              'current-stock.csv',
+              ['Code', 'Name', 'Category', 'Unit', 'Qty', 'WAC (Rs)', 'Total Value (Rs)', 'Reorder Level'],
+              filteredStock.map(i => [i.item_code, i.name, i.category || '', i.unit || '', i.current_qty, i.weighted_avg_cost, i.total_value || 0, i.reorder_level])
+            )}>⬇ Export CSV</button>
           </div>
           <table className="table">
             <thead><tr>
@@ -198,6 +218,11 @@ export default function ReportsPage() {
             <input className="form-input" type="date" style={{ width: 150 }} value={tfTo} onChange={e => setTfTo(e.target.value)} title="To date" />
             <button className="btn btn-secondary" onClick={loadTransfers}>↻ Apply</button>
             <button className="btn btn-secondary" onClick={() => { setTfBranch(''); setTfItem(''); setTfFrom(''); setTfTo('') }}>Clear</button>
+            <button className="btn btn-secondary" onClick={() => exportCSV(
+              'branch-transfers.csv',
+              ['Date', 'Item', 'Item Code', 'Qty', 'Unit', 'WAC (Rs)', 'Total Value', 'Branch', 'Reference', 'Recorded By'],
+              sortedTransfers.map(r => [r.created_at?.slice(0,10), r.item_name, r.item_code, r.quantity, r.unit, r.issued_cost, (r.quantity * r.issued_cost).toFixed(2), r.branch_name, r.reference_no || '', r.created_by_name || ''])
+            )}>⬇ Export CSV</button>
           </div>
           <table className="table">
             <thead><tr>
@@ -241,6 +266,13 @@ export default function ReportsPage() {
               {categories.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
             <button className="btn btn-secondary" onClick={loadLowStock}>↻ Refresh</button>
+            <button className="btn btn-secondary" onClick={() => {
+              const rows = (data.lowStock || []).filter(i => !stockCat || i.category === stockCat)
+              exportCSV('low-stock-alerts.csv',
+                ['Code', 'Name', 'Category', 'Unit', 'Current Qty', 'Reorder Level', 'Vendor', 'Contact'],
+                rows.map(i => [i.item_code, i.name, i.category || '', i.unit || '', i.current_qty, i.reorder_level, i.vendor_name || '', i.vendor_contact || ''])
+              )
+            }}>⬇ Export CSV</button>
           </div>
           <table className="table">
             <thead><tr><th>Code</th><th>Name</th><th>Category</th><th>Unit</th><th>Current Qty</th><th>Reorder Level</th><th>Vendor</th><th>Contact</th></tr></thead>
@@ -313,6 +345,11 @@ export default function ReportsPage() {
             <input className="form-input" type="date" style={{ width: 150 }} value={phTo} onChange={e => setPhTo(e.target.value)} title="To date" />
             <button className="btn btn-secondary" onClick={loadPurchaseHistory}>↻ Apply</button>
             <button className="btn btn-secondary" onClick={() => { setPhItem(''); setPhVendor(''); setPhFrom(''); setPhTo('') }}>Clear</button>
+            <button className="btn btn-secondary" onClick={() => exportCSV(
+              'purchase-history.csv',
+              ['Date', 'Item', 'Item Code', 'Qty', 'Unit', 'Unit Price (Rs)', 'Total (Rs)', 'Vendor', 'Invoice No.', 'Recorded By'],
+              sortedPH.map(r => [r.invoice_date || r.created_at?.slice(0,10), r.item_name, r.item_code, r.quantity, r.unit, r.unit_price, (r.quantity * r.unit_price).toFixed(2), r.vendor_name || '', r.invoice_no || '', r.created_by_name || ''])
+            )}>⬇ Export CSV</button>
           </div>
           <table className="table">
             <thead><tr>
