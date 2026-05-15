@@ -109,7 +109,10 @@ export default function RequisitionPage() {
       setShowConfirm(false)
       fetchRequisitions()
     } catch (err) {
-      setFormError(err.response?.data?.error || 'Failed to submit')
+      const msg = err.response?.data?.error
+        || err.response?.data?.message
+        || (err.response ? `Server error ${err.response.status}` : `Network error: ${err.message}`)
+      setFormError(msg)
       setShowConfirm(false)
     } finally {
       setSubmitting(false)
