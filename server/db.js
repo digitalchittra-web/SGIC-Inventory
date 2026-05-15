@@ -154,7 +154,7 @@ export async function initDB() {
   await query(`CREATE TABLE IF NOT EXISTS requisitions (
     id SERIAL PRIMARY KEY,
     user_id INTEGER NOT NULL REFERENCES users(id),
-    status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','approved','rejected')),
+    status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','approved','rejected','invalid')),
     remarks TEXT,
     reference_no TEXT,
     approved_by INTEGER REFERENCES users(id),

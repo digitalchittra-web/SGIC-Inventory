@@ -189,17 +189,35 @@ router.put('/:id', auth, async (req, res) => {
   }
 })
 
-// DELETE requisition (user: pending only)
+// DELETE requisition (user: pending only; admin: any)
 router.delete('/:id', auth, async (req, res) => {
   try {
     const reqRow = await get('SELECT * FROM requisitions WHERE id = $1', [req.params.id])
     if (!reqRow) return res.status(404).json({ error: 'Not found' })
     if (req.user.role !== 'admin' && reqRow.user_id !== req.user.id) return res.status(403).json({ error: 'Forbidden' })
-    if (reqRow.status !== 'pending') return res.status(400).json({ error: 'Can only delete pending requisitions' })
+    if (req.user.role !== 'admin' && reqRow.status !== 'pending') return res.status(400).json({ error: 'Can only delete pending requisitions' })
 
     await run('DELETE FROM requisitions WHERE id = $1', [reqRow.id])
     await logAction(req.user.id, 'DELETE', 'requisition', reqRow.id, 'Deleted requisition')
     res.json({ message: 'Deleted' })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// POST invalidate approved requisition (admin only) → marks as rejected/invalid
+router.post('/:id/invalidate', auth, adminOnly, async (req, res) => {
+  try {
+    const reqRow = await get('SELECT * FROM requisitions WHERE id = $1', [req.params.id])
+    if (!reqRow) return res.status(404).json({ error: 'Not found' })
+    if (reqRow.status !== 'approved') return res.status(400).json({ error: 'Can only invalidate approved requisitions' })
+
+    await run(
+      'UPDATE requisitions SET status = $1 WHERE id = $2',
+      ['rejected', reqRow.id]
+    )
+    await logAction(req.user.id, 'UPDATE', 'requisition', reqRow.id, 'Invalidated approved requisition')
+    res.json({ message: 'Invalidated' })
   } catch (err) {
     res.status(500).json({ error: err.message })
   }

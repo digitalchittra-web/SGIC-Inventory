@@ -11,12 +11,13 @@ function StatusBadge({ status }) {
     approved: { background: '#D1FAE5', color: '#065F46', border: '1px solid #6EE7B7' },
     rejected: { background: '#FEE2E2', color: '#991B1B', border: '1px solid #FCA5A5' },
   }
+  const labels = { pending: 'Pending', approved: 'Approved', rejected: 'Invalid Slip' }
   return (
     <span style={{
       padding: '2px 10px', borderRadius: 12, fontSize: 12, fontWeight: 600,
-      ...styles[status]
+      ...(styles[status] || styles.rejected)
     }}>
-      {status.charAt(0).toUpperCase() + status.slice(1)}
+      {labels[status] || status}
     </span>
   )
 }
@@ -159,12 +160,26 @@ export default function RequisitionPage() {
     setApproveError('')
     try {
       await handleSaveAdminQtys()
-      const res = await api.post(`/requisitions/${selected.id}/approve`)
+      await api.post(`/requisitions/${selected.id}/approve`)
       closeDetail()
       fetchRequisitions()
-      if (res.data.warnings?.length) alert('Approved with warnings:\n' + res.data.warnings.join('\n'))
     } catch (err) {
       setApproveError(err.response?.data?.error || 'Approval failed')
+    } finally {
+      setApproving(false)
+    }
+  }
+
+  async function handleInvalidate() {
+    if (!confirm('Mark this approved requisition as Invalid Slip? The user will be prompted to create a new one.')) return
+    setApproving(true)
+    setApproveError('')
+    try {
+      await api.post(`/requisitions/${selected.id}/invalidate`)
+      closeDetail()
+      fetchRequisitions()
+    } catch (err) {
+      setApproveError(err.response?.data?.error || 'Failed to invalidate')
     } finally {
       setApproving(false)
     }
@@ -264,7 +279,7 @@ export default function RequisitionPage() {
           {requisitions.map(req => (
             <tr
               key={req.id}
-              style={req.status === 'approved' ? { background: '#F0FDF4' } : {}}
+              style={req.status === 'approved' ? { background: '#F0FDF4' } : req.status === 'rejected' ? { background: '#FFF5F5' } : {}}
             >
               <td><strong>#{req.id}</strong></td>
               {isAdmin && <td>{req.requested_by}</td>}
@@ -276,6 +291,9 @@ export default function RequisitionPage() {
                 <button className="btn btn-sm btn-secondary" onClick={() => openDetail(req)}>
                   {isAdmin && req.status === 'pending' ? 'Review' : 'View'}
                 </button>
+                {isAdmin && (
+                  <button className="btn btn-sm btn-danger" onClick={() => handleDelete(req)}>Delete</button>
+                )}
                 {!isAdmin && req.status === 'pending' && (
                   <>
                     <button className="btn btn-sm btn-secondary" onClick={() => handleLoadAndEdit(req)}>Edit</button>
@@ -430,13 +448,22 @@ export default function RequisitionPage() {
                 {selected.reference_no && <span style={{ fontSize: 13, fontFamily: 'monospace', color: '#185FA5' }}>{selected.reference_no}</span>}
               </div>
 
+              {/* Invalid slip notice for users */}
+              {!isAdmin && selected.status === 'rejected' && (
+                <div style={{ background: '#FEE2E2', border: '1px solid #FCA5A5', borderRadius: 8, padding: '14px 16px', marginBottom: 14 }}>
+                  <div style={{ fontWeight: 700, color: '#991B1B', fontSize: 14, marginBottom: 4 }}>⚠ Invalid Slip</div>
+                  <div style={{ color: '#7F1D1D', fontSize: 13 }}>This requisition has been invalidated by the admin. Please create a new requisition.</div>
+                </div>
+              )}
+
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, marginBottom: 14 }}>
                 <thead>
                   <tr style={{ background: '#F9FAFB' }}>
                     <th style={thStyle}>Item</th>
-                    <th style={thStyle}>Requested Qty</th>
+                    <th style={thStyle}>
+                      {selected.status === 'approved' ? 'Approved Qty' : 'Requested Qty'}
+                    </th>
                     {isAdmin && selected.status === 'pending' && <th style={thStyle}>Approve Qty</th>}
-                    {isAdmin && selected.status === 'approved' && <th style={thStyle}>Approved Qty</th>}
                     <th style={thStyle}>Description</th>
                   </tr>
                 </thead>
@@ -447,7 +474,12 @@ export default function RequisitionPage() {
                         <strong>{item.item_name}</strong>{' '}
                         <span style={{ color: '#9ca3af', fontSize: 11 }}>({item.item_code})</span>
                       </td>
-                      <td style={tdStyle}>{item.quantity} {item.unit || ''}</td>
+                      <td style={tdStyle}>
+                        {selected.status === 'approved'
+                          ? (item.approved_quantity ?? item.quantity)
+                          : item.quantity
+                        } {item.unit || ''}
+                      </td>
                       {isAdmin && selected.status === 'pending' && (
                         <td style={tdStyle}>
                           <input
@@ -459,9 +491,6 @@ export default function RequisitionPage() {
                           />
                           <span style={{ fontSize: 11, color: '#9ca3af', marginLeft: 4 }}>{item.unit || ''}</span>
                         </td>
-                      )}
-                      {isAdmin && selected.status === 'approved' && (
-                        <td style={tdStyle}>{item.approved_quantity ?? item.quantity} {item.unit || ''}</td>
                       )}
                       <td style={tdStyle}>{item.description || '—'}</td>
                     </tr>
@@ -479,9 +508,19 @@ export default function RequisitionPage() {
 
               <div className="modal-actions">
                 <button className="btn btn-secondary" onClick={closeDetail}>Close</button>
+                {!isAdmin && selected.status === 'rejected' && (
+                  <button className="btn btn-primary" onClick={() => { closeDetail(); handleOpenCreate() }}>
+                    + Create New Requisition
+                  </button>
+                )}
                 {isAdmin && selected.status === 'pending' && (
                   <button className="btn btn-primary" onClick={handleApprove} disabled={approving}>
                     {approving ? 'Approving…' : '✓ Approve & Issue'}
+                  </button>
+                )}
+                {isAdmin && selected.status === 'approved' && (
+                  <button className="btn btn-danger" onClick={handleInvalidate} disabled={approving}>
+                    {approving ? 'Processing…' : '✕ Mark as Invalid Slip'}
                   </button>
                 )}
               </div>
