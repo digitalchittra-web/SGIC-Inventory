@@ -4,13 +4,6 @@ import Modal from '../components/Modal.jsx'
 import { useAuth } from '../store.jsx'
 import { formatNumber, formatCurrency } from '../utils.js'
 
-const LOW_LEVEL_OPTIONS = [
-  { label: '— none —', value: '' },
-  { label: 'Low (5)', value: '5' },
-  { label: 'Medium (10)', value: '10' },
-  { label: 'High (20)', value: '20' },
-]
-
 const emptyRow = (item_code = '') => ({
   item_code,
   name: '',
@@ -345,16 +338,16 @@ export default function InventoryPage() {
                         </select>
                       </td>
                       <td style={tdStyle}>
-                        <select
+                        <input
                           className="form-input"
-                          style={{ width: 110 }}
+                          style={{ width: 90 }}
+                          type="number"
+                          min="0"
+                          step="1"
                           value={row.reorder_level}
                           onChange={e => updateBulkRow(i, 'reorder_level', e.target.value)}
-                        >
-                          {LOW_LEVEL_OPTIONS.map(o => (
-                            <option key={o.value} value={o.value}>{o.label}</option>
-                          ))}
-                        </select>
+                          placeholder="0"
+                        />
                       </td>
                       <td style={{ ...tdStyle, textAlign: 'center' }}>
                         <button

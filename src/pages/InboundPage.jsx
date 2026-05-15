@@ -338,7 +338,7 @@ export default function InboundPage() {
                             />
                           </td>
                           <td style={{ padding: 8 }}>
-                            <input type="number" min="0.01" step="any" value={row.quantity}
+                            <input type="number" min="1" step="1" value={row.quantity}
                               onChange={e => updateRow(idx, 'quantity', e.target.value)}
                               style={{ width: '100%', padding: 6, border: '1px solid #ddd', borderRadius: 4 }} placeholder="0" />
                           </td>

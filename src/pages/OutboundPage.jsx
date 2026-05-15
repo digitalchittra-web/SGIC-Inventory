@@ -299,7 +299,7 @@ export default function OutboundPage() {
                           </td>
                           <td style={{ padding: 8 }}>
                             <input
-                              type="number" min="0.01" step="any"
+                              type="number" min="1" step="1"
                               max={Math.max(0, remainingQty)}
                               value={row.quantity}
                               onChange={e => updateRow(idx, 'quantity', e.target.value)}
