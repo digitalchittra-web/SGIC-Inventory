@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import api from '../api.js'
 import Modal from '../components/Modal.jsx'
+import { SortTh, sortRows, makeOnSort } from '../components/SortTh.jsx'
 
 const emptyVendorRow = () => ({
   name: '',
@@ -17,6 +18,9 @@ export default function VendorsPage() {
   const [vendors, setVendors] = useState([])
   const [search, setSearch] = useState('')
   const [modal, setModal] = useState(null)
+  const [sortCol, setSortCol] = useState('')
+  const [sortDir, setSortDir] = useState('asc')
+  const onSort = makeOnSort(sortCol, setSortCol, sortDir, setSortDir)
 
   // Bulk-add state
   const [bulkRows, setBulkRows] = useState([emptyVendorRow()])
@@ -35,14 +39,17 @@ export default function VendorsPage() {
   }
   useEffect(() => { fetchVendors() }, [])
 
-  const filtered = vendors.filter(v => {
-    const q = search.toLowerCase()
-    return !q
-      || v.name.toLowerCase().includes(q)
-      || (v.contact_person || '').toLowerCase().includes(q)
-      || (v.phone || '').toLowerCase().includes(q)
-      || (v.email || '').toLowerCase().includes(q)
-  })
+  const filtered = sortRows(
+    vendors.filter(v => {
+      const q = search.toLowerCase()
+      return !q
+        || v.name.toLowerCase().includes(q)
+        || (v.contact_person || '').toLowerCase().includes(q)
+        || (v.phone || '').toLowerCase().includes(q)
+        || (v.email || '').toLowerCase().includes(q)
+    }),
+    sortCol, sortDir
+  )
 
   // ── Bulk-add modal ──────────────────────────────────────────────────────────
 
@@ -183,8 +190,14 @@ export default function VendorsPage() {
       <table className="table">
         <thead>
           <tr>
-            <th>Name</th><th>PAN/VAT</th><th>Contact Person</th>
-            <th>Phone</th><th>Email</th><th>Address</th><th>Created</th><th>Actions</th>
+            <SortTh col="name" label="Name" sortCol={sortCol} sortDir={sortDir} onSort={onSort} />
+            <SortTh col="pan_vat" label="PAN/VAT" sortCol={sortCol} sortDir={sortDir} onSort={onSort} />
+            <SortTh col="contact_person" label="Contact Person" sortCol={sortCol} sortDir={sortDir} onSort={onSort} />
+            <SortTh col="phone" label="Phone" sortCol={sortCol} sortDir={sortDir} onSort={onSort} />
+            <SortTh col="email" label="Email" sortCol={sortCol} sortDir={sortDir} onSort={onSort} />
+            <SortTh col="address" label="Address" sortCol={sortCol} sortDir={sortDir} onSort={onSort} />
+            <SortTh col="created_at" label="Created" sortCol={sortCol} sortDir={sortDir} onSort={onSort} />
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody>

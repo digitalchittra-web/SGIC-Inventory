@@ -3,6 +3,7 @@ import api from '../api.js'
 import Modal from '../components/Modal.jsx'
 import { useAuth } from '../store.jsx'
 import { formatNumber, formatCurrency } from '../utils.js'
+import { SortTh, sortRows, makeOnSort } from '../components/SortTh.jsx'
 
 const emptyRow = (item_code = '') => ({
   item_code,
@@ -47,6 +48,9 @@ export default function InventoryPage() {
   const [search, setSearch] = useState('')
   const [catFilter, setCatFilter] = useState('')
   const [modal, setModal] = useState(null)
+  const [sortCol, setSortCol] = useState('')
+  const [sortDir, setSortDir] = useState('asc')
+  const onSort = makeOnSort(sortCol, setSortCol, sortDir, setSortDir)
 
   // Bulk-add state
   const [bulkRows, setBulkRows] = useState([])
@@ -70,12 +74,15 @@ export default function InventoryPage() {
     api.get('/units').then(r => setUnits(r.data)).catch(console.error)
   }, [])
 
-  const filtered = items.filter(i => {
-    const q = search.toLowerCase()
-    const matchSearch = !q || i.name.toLowerCase().includes(q) || i.item_code.toLowerCase().includes(q) || (i.category || '').toLowerCase().includes(q)
-    const matchCat = !catFilter || i.category === catFilter
-    return matchSearch && matchCat
-  })
+  const filtered = sortRows(
+    items.filter(i => {
+      const q = search.toLowerCase()
+      const matchSearch = !q || i.name.toLowerCase().includes(q) || i.item_code.toLowerCase().includes(q) || (i.category || '').toLowerCase().includes(q)
+      const matchCat = !catFilter || i.category === catFilter
+      return matchSearch && matchCat
+    }),
+    sortCol, sortDir
+  )
 
   // ── Bulk-add modal ──────────────────────────────────────────────────────────
 
@@ -234,8 +241,11 @@ export default function InventoryPage() {
       <table className="table">
         <thead>
           <tr>
-            <th>Code</th><th>Name</th><th>Category</th><th>Unit</th>
-            <th>Low Stock Alert Level</th>
+            <SortTh col="item_code" label="Code" sortCol={sortCol} sortDir={sortDir} onSort={onSort} />
+            <SortTh col="name" label="Name" sortCol={sortCol} sortDir={sortDir} onSort={onSort} />
+            <SortTh col="category" label="Category" sortCol={sortCol} sortDir={sortDir} onSort={onSort} />
+            <SortTh col="unit" label="Unit" sortCol={sortCol} sortDir={sortDir} onSort={onSort} />
+            <SortTh col="reorder_level" label="Low Stock Alert Level" sortCol={sortCol} sortDir={sortDir} onSort={onSort} />
             {isAdmin && <th>Actions</th>}
           </tr>
         </thead>

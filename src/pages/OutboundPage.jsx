@@ -3,6 +3,7 @@ import api from '../api.js'
 import Modal from '../components/Modal.jsx'
 import ItemPicker from '../components/ItemPicker.jsx'
 import { formatNumber } from '../utils.js'
+import { SortTh, sortRows, makeOnSort } from '../components/SortTh.jsx'
 
 const emptyRow = { itemId: '', quantity: '' }
 
@@ -20,6 +21,9 @@ export default function OutboundPage() {
   const [dateTo, setDateTo] = useState('')
   const [filterBranchId, setFilterBranchId] = useState('')
   const [expandedGroups, setExpandedGroups] = useState(new Set())
+  const [sortCol, setSortCol] = useState('')
+  const [sortDir, setSortDir] = useState('asc')
+  const onSort = makeOnSort(sortCol, setSortCol, sortDir, setSortDir)
 
   function fetchRecords() { api.get('/outbound').then(r => setRecords(r.data)).catch(console.error) }
   useEffect(() => {
@@ -56,7 +60,7 @@ export default function OutboundPage() {
       map[key].items.push(r)
       map[key].total += (parseFloat(r.quantity) || 0) * (parseFloat(r.issued_cost) || 0)
     })
-    return Object.values(map)
+    return sortRows(Object.values(map), sortCol, sortDir)
   })()
 
   function toggleGroup(key) {
@@ -177,12 +181,12 @@ export default function OutboundPage() {
         <thead>
           <tr>
             <th style={{ width: 32 }}></th>
-            <th>Date</th>
-            <th>Reference No.</th>
-            <th>Branch</th>
+            <SortTh col="date" label="Date" sortCol={sortCol} sortDir={sortDir} onSort={onSort} />
+            <SortTh col="reference_no" label="Reference No." sortCol={sortCol} sortDir={sortDir} onSort={onSort} />
+            <SortTh col="branch_name" label="Branch" sortCol={sortCol} sortDir={sortDir} onSort={onSort} />
             <th>Items</th>
-            <th>Total Value (Rs)</th>
-            <th>Recorded By</th>
+            <SortTh col="total" label="Total Value (Rs)" sortCol={sortCol} sortDir={sortDir} onSort={onSort} />
+            <SortTh col="created_by_name" label="Recorded By" sortCol={sortCol} sortDir={sortDir} onSort={onSort} />
           </tr>
         </thead>
         <tbody>

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import api from '../api.js'
 import { useAuth } from '../store.jsx'
 import { formatNumber } from '../utils.js'
+import { SortTh, sortRows, makeOnSort } from '../components/SortTh.jsx'
 
 const ADMIN_TABS = ['Current Stock', 'Branch Transfers', 'Low Stock Alerts', 'User Activity', 'Purchase History']
 const USER_TABS = ['Current Stock']
@@ -13,6 +14,17 @@ export default function ReportsPage() {
 
   const [tab, setTab] = useState(0)
   const [data, setData] = useState({})
+  const [sortCol, setSortCol] = useState('')
+  const [sortDir, setSortDir] = useState('asc')
+  const onSort = makeOnSort(sortCol, setSortCol, sortDir, setSortDir)
+  // Transfer sort
+  const [tfSortCol, setTfSortCol] = useState('')
+  const [tfSortDir, setTfSortDir] = useState('asc')
+  const onTfSort = makeOnSort(tfSortCol, setTfSortCol, tfSortDir, setTfSortDir)
+  // Purchase history sort
+  const [phSortCol, setPhSortCol] = useState('')
+  const [phSortDir, setPhSortDir] = useState('asc')
+  const onPhSort = makeOnSort(phSortCol, setPhSortCol, phSortDir, setPhSortDir)
 
   // Items, branches, users for filter dropdowns
   const [items, setItems] = useState([])
@@ -93,11 +105,16 @@ export default function ReportsPage() {
   const categories = [...new Set(items.map(i => i.category).filter(Boolean))]
   const actionTypes = ['LOGIN', 'CREATE', 'UPDATE', 'DELETE', 'INBOUND', 'OUTBOUND', 'EDIT_INBOUND', 'DELETE_INBOUND', 'CREATE_USER', 'UPDATE_USER', 'DEACTIVATE_USER']
 
-  const filteredStock = (data.stock || []).filter(i => {
-    const q = stockSearch.toLowerCase()
-    return (!q || i.name.toLowerCase().includes(q) || i.item_code.toLowerCase().includes(q))
-      && (!stockCat || i.category === stockCat)
-  })
+  const filteredStock = sortRows(
+    (data.stock || []).filter(i => {
+      const q = stockSearch.toLowerCase()
+      return (!q || i.name.toLowerCase().includes(q) || i.item_code.toLowerCase().includes(q))
+        && (!stockCat || i.category === stockCat)
+    }),
+    sortCol, sortDir
+  )
+  const sortedTransfers = sortRows(data.transfers || [], tfSortCol, tfSortDir)
+  const sortedPH = sortRows(data.ph || [], phSortCol, phSortDir)
 
   return (
     <div className="page">
@@ -126,7 +143,16 @@ export default function ReportsPage() {
             <button className="btn btn-secondary" onClick={loadStock}>↻ Refresh</button>
           </div>
           <table className="table">
-            <thead><tr><th>Code</th><th>Name</th><th>Category</th><th>Unit</th><th>Qty</th><th>WAC (Rs)</th><th>Total Value (Rs)</th><th>Reorder Level</th></tr></thead>
+            <thead><tr>
+              <SortTh col="item_code" label="Code" sortCol={sortCol} sortDir={sortDir} onSort={onSort} />
+              <SortTh col="name" label="Name" sortCol={sortCol} sortDir={sortDir} onSort={onSort} />
+              <SortTh col="category" label="Category" sortCol={sortCol} sortDir={sortDir} onSort={onSort} />
+              <SortTh col="unit" label="Unit" sortCol={sortCol} sortDir={sortDir} onSort={onSort} />
+              <SortTh col="current_qty" label="Qty" sortCol={sortCol} sortDir={sortDir} onSort={onSort} />
+              <SortTh col="weighted_avg_cost" label="WAC (Rs)" sortCol={sortCol} sortDir={sortDir} onSort={onSort} />
+              <SortTh col="total_value" label="Total Value (Rs)" sortCol={sortCol} sortDir={sortDir} onSort={onSort} />
+              <SortTh col="reorder_level" label="Reorder Level" sortCol={sortCol} sortDir={sortDir} onSort={onSort} />
+            </tr></thead>
             <tbody>
               {!data.stock && <tr><td colSpan={8} className="empty-row">Loading…</td></tr>}
               {filteredStock.map(i => (
@@ -174,10 +200,20 @@ export default function ReportsPage() {
             <button className="btn btn-secondary" onClick={() => { setTfBranch(''); setTfItem(''); setTfFrom(''); setTfTo('') }}>Clear</button>
           </div>
           <table className="table">
-            <thead><tr><th>Date</th><th>Item</th><th>Qty</th><th>Unit</th><th>WAC (Rs)</th><th>Total Value</th><th>Branch</th><th>Reference</th><th>By</th></tr></thead>
+            <thead><tr>
+              <SortTh col="created_at" label="Date" sortCol={tfSortCol} sortDir={tfSortDir} onSort={onTfSort} />
+              <SortTh col="item_name" label="Item" sortCol={tfSortCol} sortDir={tfSortDir} onSort={onTfSort} />
+              <SortTh col="quantity" label="Qty" sortCol={tfSortCol} sortDir={tfSortDir} onSort={onTfSort} />
+              <SortTh col="unit" label="Unit" sortCol={tfSortCol} sortDir={tfSortDir} onSort={onTfSort} />
+              <SortTh col="issued_cost" label="WAC (Rs)" sortCol={tfSortCol} sortDir={tfSortDir} onSort={onTfSort} />
+              <th>Total Value</th>
+              <SortTh col="branch_name" label="Branch" sortCol={tfSortCol} sortDir={tfSortDir} onSort={onTfSort} />
+              <SortTh col="reference_no" label="Reference" sortCol={tfSortCol} sortDir={tfSortDir} onSort={onTfSort} />
+              <SortTh col="created_by_name" label="By" sortCol={tfSortCol} sortDir={tfSortDir} onSort={onTfSort} />
+            </tr></thead>
             <tbody>
               {!data.transfers && <tr><td colSpan={9} className="empty-row">Loading…</td></tr>}
-              {data.transfers?.map(r => (
+              {sortedTransfers.map(r => (
                 <tr key={r.id}>
                   <td>{r.created_at?.slice(0,10)}</td>
                   <td>{r.item_name} <span className="item-code">({r.item_code})</span></td>
@@ -190,7 +226,7 @@ export default function ReportsPage() {
                   <td>{r.created_by_name || '—'}</td>
                 </tr>
               ))}
-              {data.transfers?.length === 0 && <tr><td colSpan={9} className="empty-row">No transfers match.</td></tr>}
+              {sortedTransfers.length === 0 && data.transfers && <tr><td colSpan={9} className="empty-row">No transfers match.</td></tr>}
             </tbody>
           </table>
         </>
@@ -279,10 +315,20 @@ export default function ReportsPage() {
             <button className="btn btn-secondary" onClick={() => { setPhItem(''); setPhVendor(''); setPhFrom(''); setPhTo('') }}>Clear</button>
           </div>
           <table className="table">
-            <thead><tr><th>Date</th><th>Item</th><th>Qty</th><th>Unit</th><th>Unit Price</th><th>Total</th><th>Vendor</th><th>Invoice No.</th><th>By</th></tr></thead>
+            <thead><tr>
+              <SortTh col="invoice_date" label="Date" sortCol={phSortCol} sortDir={phSortDir} onSort={onPhSort} />
+              <SortTh col="item_name" label="Item" sortCol={phSortCol} sortDir={phSortDir} onSort={onPhSort} />
+              <SortTh col="quantity" label="Qty" sortCol={phSortCol} sortDir={phSortDir} onSort={onPhSort} />
+              <SortTh col="unit" label="Unit" sortCol={phSortCol} sortDir={phSortDir} onSort={onPhSort} />
+              <SortTh col="unit_price" label="Unit Price" sortCol={phSortCol} sortDir={phSortDir} onSort={onPhSort} />
+              <th>Total</th>
+              <SortTh col="vendor_name" label="Vendor" sortCol={phSortCol} sortDir={phSortDir} onSort={onPhSort} />
+              <SortTh col="invoice_no" label="Invoice No." sortCol={phSortCol} sortDir={phSortDir} onSort={onPhSort} />
+              <SortTh col="created_by_name" label="By" sortCol={phSortCol} sortDir={phSortDir} onSort={onPhSort} />
+            </tr></thead>
             <tbody>
               {!data.ph && <tr><td colSpan={9} className="empty-row">Loading…</td></tr>}
-              {data.ph?.map(r => (
+              {sortedPH.map(r => (
                 <tr key={r.id}>
                   <td>{r.invoice_date || r.created_at?.slice(0,10)}</td>
                   <td>{r.item_name} <span className="item-code">({r.item_code})</span></td>
@@ -295,7 +341,7 @@ export default function ReportsPage() {
                   <td>{r.created_by_name || '—'}</td>
                 </tr>
               ))}
-              {data.ph?.length === 0 && <tr><td colSpan={9} className="empty-row">No records match.</td></tr>}
+              {sortedPH.length === 0 && data.ph && <tr><td colSpan={9} className="empty-row">No records match.</td></tr>}
             </tbody>
           </table>
         </>

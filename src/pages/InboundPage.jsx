@@ -4,6 +4,7 @@ import Modal from '../components/Modal.jsx'
 import ItemPicker from '../components/ItemPicker.jsx'
 import { useAuth } from '../store.jsx'
 import { formatNumber } from '../utils.js'
+import { SortTh, sortRows, makeOnSort } from '../components/SortTh.jsx'
 
 const emptyRow = { itemId: '', quantity: '', unitPrice: '' }
 
@@ -18,6 +19,9 @@ export default function InboundPage() {
   const [filterVendorId, setFilterVendorId] = useState('')
   const [expandedGroups, setExpandedGroups] = useState(new Set())
   const [modal, setModal] = useState(null) // null | 'add' | 'edit'
+  const [sortCol, setSortCol] = useState('')
+  const [sortDir, setSortDir] = useState('asc')
+  const onSort = makeOnSort(sortCol, setSortCol, sortDir, setSortDir)
   const [selectedVendorId, setSelectedVendorId] = useState('')
   const [invoiceNo, setInvoiceNo] = useState('')
   const [invoiceDate, setInvoiceDate] = useState('')
@@ -65,7 +69,7 @@ export default function InboundPage() {
       map[key].items.push(r)
       map[key].total += (parseFloat(r.quantity) || 0) * (parseFloat(r.unit_price) || 0)
     })
-    return Object.values(map)
+    return sortRows(Object.values(map), sortCol, sortDir)
   })()
 
   function toggleGroup(key) {
@@ -215,12 +219,12 @@ export default function InboundPage() {
         <thead>
           <tr>
             <th style={{ width: 32 }}></th>
-            <th>Date</th>
-            <th>Vendor</th>
-            <th>Invoice No.</th>
+            <SortTh col="date" label="Date" sortCol={sortCol} sortDir={sortDir} onSort={onSort} />
+            <SortTh col="vendor_name" label="Vendor" sortCol={sortCol} sortDir={sortDir} onSort={onSort} />
+            <SortTh col="invoice_no" label="Invoice No." sortCol={sortCol} sortDir={sortDir} onSort={onSort} />
             <th>Items</th>
-            <th>Total Amount (Rs)</th>
-            <th>Recorded By</th>
+            <SortTh col="total" label="Total Amount (Rs)" sortCol={sortCol} sortDir={sortDir} onSort={onSort} />
+            <SortTh col="created_by_name" label="Recorded By" sortCol={sortCol} sortDir={sortDir} onSort={onSort} />
           </tr>
         </thead>
         <tbody>

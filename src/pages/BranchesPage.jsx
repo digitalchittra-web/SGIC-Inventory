@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import api from '../api.js'
 import Modal from '../components/Modal.jsx'
 import { useAuth } from '../store.jsx'
+import { SortTh, sortRows, makeOnSort } from '../components/SortTh.jsx'
 
 const emptyEdit = { name: '', location: '' }
 const newBulkRow = () => ({ id: crypto.randomUUID(), name: '', location: '', error: '' })
@@ -12,6 +13,9 @@ export default function BranchesPage() {
   const [branches, setBranches] = useState([])
   const [search, setSearch] = useState('')
   const [modal, setModal] = useState(null) // null | 'bulk-add' | 'edit'
+  const [sortCol, setSortCol] = useState('')
+  const [sortDir, setSortDir] = useState('asc')
+  const onSort = makeOnSort(sortCol, setSortCol, sortDir, setSortDir)
 
   // Edit state
   const [editForm, setEditForm] = useState(emptyEdit)
@@ -28,10 +32,13 @@ export default function BranchesPage() {
   }
   useEffect(() => { fetchBranches() }, [])
 
-  const filtered = branches.filter(b => {
-    const q = search.toLowerCase()
-    return !q || b.name.toLowerCase().includes(q) || (b.location || '').toLowerCase().includes(q)
-  })
+  const filtered = sortRows(
+    branches.filter(b => {
+      const q = search.toLowerCase()
+      return !q || b.name.toLowerCase().includes(q) || (b.location || '').toLowerCase().includes(q)
+    }),
+    sortCol, sortDir
+  )
 
   function openBulkAdd() {
     setBulkRows([newBulkRow()])
@@ -141,7 +148,10 @@ export default function BranchesPage() {
       <table className="table">
         <thead>
           <tr>
-            <th>#</th><th>Branch Name</th><th>Location</th><th>Created</th>
+            <th>#</th>
+            <SortTh col="name" label="Branch Name" sortCol={sortCol} sortDir={sortDir} onSort={onSort} />
+            <SortTh col="location" label="Location" sortCol={sortCol} sortDir={sortDir} onSort={onSort} />
+            <SortTh col="created_at" label="Created" sortCol={sortCol} sortDir={sortDir} onSort={onSort} />
             {isAdmin && <th>Actions</th>}
           </tr>
         </thead>
