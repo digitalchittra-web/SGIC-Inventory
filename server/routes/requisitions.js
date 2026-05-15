@@ -205,19 +205,49 @@ router.delete('/:id', auth, async (req, res) => {
   }
 })
 
-// POST invalidate approved requisition (admin only) → marks as rejected/invalid
+// POST reject pending requisition (admin only) → no outbound entry
+router.post('/:id/reject', auth, adminOnly, async (req, res) => {
+  try {
+    const reqRow = await get('SELECT * FROM requisitions WHERE id = $1', [req.params.id])
+    if (!reqRow) return res.status(404).json({ error: 'Not found' })
+    if (reqRow.status !== 'pending') return res.status(400).json({ error: 'Can only reject pending requisitions' })
+
+    await run('UPDATE requisitions SET status = $1 WHERE id = $2', ['rejected', reqRow.id])
+    await logAction(req.user.id, 'UPDATE', 'requisition', reqRow.id, 'Rejected requisition')
+    res.json({ message: 'Rejected' })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// POST invalidate approved requisition (admin only) → reverse outbound entries, restore inventory
 router.post('/:id/invalidate', auth, adminOnly, async (req, res) => {
   try {
     const reqRow = await get('SELECT * FROM requisitions WHERE id = $1', [req.params.id])
     if (!reqRow) return res.status(404).json({ error: 'Not found' })
     if (reqRow.status !== 'approved') return res.status(400).json({ error: 'Can only invalidate approved requisitions' })
 
-    await run(
-      'UPDATE requisitions SET status = $1 WHERE id = $2',
-      ['rejected', reqRow.id]
-    )
-    await logAction(req.user.id, 'UPDATE', 'requisition', reqRow.id, 'Invalidated approved requisition')
-    res.json({ message: 'Invalidated' })
+    // Find all outbound records for this requisition's reference number
+    if (reqRow.reference_no) {
+      const outbounds = await all('SELECT * FROM outbound WHERE reference_no = $1', [reqRow.reference_no])
+      for (const ob of outbounds) {
+        // Restore inventory quantity
+        await run('UPDATE items SET current_qty = current_qty + $1 WHERE id = $2', [ob.quantity, ob.item_id])
+        // Reverse branch stock if applicable
+        if (ob.destination_branch_id) {
+          await run(
+            'UPDATE branch_stock SET quantity = GREATEST(0, quantity - $1) WHERE branch_id = $2 AND item_id = $3',
+            [ob.quantity, ob.destination_branch_id, ob.item_id]
+          )
+        }
+      }
+      // Delete the outbound records
+      await run('DELETE FROM outbound WHERE reference_no = $1', [reqRow.reference_no])
+    }
+
+    await run('UPDATE requisitions SET status = $1 WHERE id = $2', ['rejected', reqRow.id])
+    await logAction(req.user.id, 'UPDATE', 'requisition', reqRow.id, `Invalidated approved requisition, reversed outbound ref: ${reqRow.reference_no}`)
+    res.json({ message: 'Invalidated and outbound reversed' })
   } catch (err) {
     res.status(500).json({ error: err.message })
   }

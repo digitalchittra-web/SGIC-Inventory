@@ -170,8 +170,23 @@ export default function RequisitionPage() {
     }
   }
 
+  async function handleReject() {
+    if (!confirm('Reject this requisition? No outbound entry will be created. The user will see it as an Invalid Slip.')) return
+    setApproving(true)
+    setApproveError('')
+    try {
+      await api.post(`/requisitions/${selected.id}/reject`)
+      closeDetail()
+      fetchRequisitions()
+    } catch (err) {
+      setApproveError(err.response?.data?.error || 'Failed to reject')
+    } finally {
+      setApproving(false)
+    }
+  }
+
   async function handleInvalidate() {
-    if (!confirm('Mark this approved requisition as Invalid Slip? The user will be prompted to create a new one.')) return
+    if (!confirm('Mark as Invalid Slip? This will REVERSE the outbound entries and restore inventory quantities.')) return
     setApproving(true)
     setApproveError('')
     try {
@@ -517,9 +532,14 @@ export default function RequisitionPage() {
                   </button>
                 )}
                 {isAdmin && selected.status === 'pending' && (
-                  <button className="btn btn-primary" onClick={handleApprove} disabled={approving}>
-                    {approving ? 'Approving…' : '✓ Approve & Issue'}
-                  </button>
+                  <>
+                    <button className="btn btn-danger" onClick={handleReject} disabled={approving}>
+                      {approving ? 'Processing…' : '✕ Reject'}
+                    </button>
+                    <button className="btn btn-primary" onClick={handleApprove} disabled={approving}>
+                      {approving ? 'Approving…' : '✓ Approve & Issue'}
+                    </button>
+                  </>
                 )}
                 {isAdmin && selected.status === 'approved' && (
                   <button className="btn btn-danger" onClick={handleInvalidate} disabled={approving}>
