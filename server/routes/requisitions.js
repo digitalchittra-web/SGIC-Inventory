@@ -102,7 +102,8 @@ router.post('/', auth, async (req, res) => {
 
     // Validate each item
     for (const item of items) {
-      if (!item.itemId || !item.quantity || item.quantity < 1) {
+      const qty = parseInt(item.quantity)
+      if (!item.itemId || !item.quantity || isNaN(qty) || qty < 1) {
         return res.status(400).json({ error: 'Each item needs itemId and quantity >= 1' })
       }
     }
