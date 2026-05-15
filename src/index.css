@@ -139,7 +139,7 @@ code { background: #f0f0f0; padding: 2px 6px; border-radius: 4px; font-size: 12p
 
 /* Modal */
 .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 20px; }
-.modal { background: var(--white); border-radius: 12px; width: 100%; max-width: 540px; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.2); }
+.modal { background: var(--white); border-radius: 12px; width: 100%; max-width: 900px; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.2); }
 .modal-header { display: flex; align-items: center; justify-content: space-between; padding: 18px 22px; border-bottom: 1px solid var(--border); }
 .modal-title { font-size: 16px; font-weight: 600; }
 .modal-close { background: none; border: none; cursor: pointer; font-size: 16px; color: var(--text-muted); padding: 4px; border-radius: 4px; }
@@ -150,6 +150,9 @@ code { background: #f0f0f0; padding: 2px 6px; border-radius: 4px; font-size: 12p
 /* Alerts */
 .alert { padding: 10px 14px; border-radius: var(--radius); margin-bottom: 14px; font-size: 13.5px; }
 .alert-error { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+.alert-success { background: #d1fae5; color: #065f46; border: 1px solid #6ee7b7; }
+.alert-info { background: #dbeafe; color: #1e40af; border: 1px solid #93c5fd; }
+.card { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); }
 
 /* Info box */
 .info-box { background: var(--blue-light); color: #0c447c; padding: 10px 14px; border-radius: var(--radius); font-size: 13px; margin-bottom: 10px; border: 1px solid #b5d4f4; }

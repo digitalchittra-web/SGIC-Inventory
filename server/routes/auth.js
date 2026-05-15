@@ -5,6 +5,9 @@ import { generateToken, auth, adminOnly, logAction } from '../middleware.js'
 
 const router = express.Router()
 
+// GET /api/auth/ping — wake up Render free tier
+router.get('/ping', (req, res) => res.json({ ok: true }))
+
 // POST /api/auth/login
 router.post('/login', async (req, res) => {
   try {
