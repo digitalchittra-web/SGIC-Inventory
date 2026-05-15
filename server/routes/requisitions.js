@@ -211,6 +211,9 @@ router.post('/:id/approve', auth, adminOnly, async (req, res) => {
     const refNo = await getNextRefNo()
 
     const errors = []
+    const validItems = []
+
+    // First pass: validate all items
     for (const ri of reqItems) {
       const approvedQty = ri.approved_quantity !== null && ri.approved_quantity !== undefined
         ? parseInt(ri.approved_quantity)
@@ -225,6 +228,17 @@ router.post('/:id/approve', auth, adminOnly, async (req, res) => {
         errors.push(`Insufficient stock for ${ri.item_name}: available ${item.current_qty}, requested ${approvedQty}`)
         continue
       }
+
+      validItems.push({ ri, item, approvedQty })
+    }
+
+    // If there are inventory errors, reject the entire approval
+    if (errors.length > 0) {
+      return res.status(400).json({ error: errors.join('; ') })
+    }
+
+    // Second pass: process only valid items
+    for (const { ri, item, approvedQty } of validItems) {
 
       const issuedCost = parseFloat(item.weighted_avg_cost) || 0
       const newQty = parseFloat(item.current_qty) - approvedQty
@@ -244,16 +258,12 @@ router.post('/:id/approve', auth, adminOnly, async (req, res) => {
       }
     }
 
-    if (errors.length === reqItems.length) {
-      return res.status(400).json({ error: 'All items failed: ' + errors.join('; ') })
-    }
-
     await run(
       'UPDATE requisitions SET status = $1, approved_by = $2, approved_at = NOW(), reference_no = $3 WHERE id = $4',
       ['approved', req.user.id, refNo, reqRow.id]
     )
     await logAction(req.user.id, 'OUTBOUND', 'requisition', reqRow.id, `Approved requisition, ref: ${refNo}`)
-    res.json({ message: 'Approved', referenceNo: refNo, warnings: errors.length ? errors : undefined })
+    res.json({ message: 'Approved', referenceNo: refNo })
   } catch (err) {
     res.status(500).json({ error: err.message })
   }
