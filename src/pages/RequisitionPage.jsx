@@ -291,7 +291,10 @@ export default function RequisitionPage() {
                 <button className="btn btn-sm btn-secondary" onClick={() => openDetail(req)}>
                   {isAdmin && req.status === 'pending' ? 'Review' : 'View'}
                 </button>
-                {isAdmin && (
+                {isAdmin && req.status === 'pending' && (
+                  <button className="btn btn-sm btn-danger" onClick={() => handleDelete(req)}>Delete</button>
+                )}
+                {isAdmin && req.status === 'rejected' && (
                   <button className="btn btn-sm btn-danger" onClick={() => handleDelete(req)}>Delete</button>
                 )}
                 {!isAdmin && req.status === 'pending' && (
