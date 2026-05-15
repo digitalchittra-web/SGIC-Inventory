@@ -12,6 +12,7 @@ const navItems = [
   { to: '/units', label: 'Units', icon: '📏', adminOnly: true },
   { to: '/vendors', label: 'Vendors', icon: '🏭', adminOnly: true },
   { to: '/users', label: 'Users', icon: '👥', adminOnly: true },
+  { to: '/departments', label: 'Departments', icon: '🏛️', adminOnly: true },
   { to: '/reports', label: 'Reports', icon: '📊', adminOnly: true },
 ]
 

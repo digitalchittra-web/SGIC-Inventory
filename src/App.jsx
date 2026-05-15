@@ -14,6 +14,7 @@ import UsersPage from './pages/UsersPage.jsx'
 import ReportsPage from './pages/ReportsPage.jsx'
 import RequisitionPage from './pages/RequisitionPage.jsx'
 import UserInventoryPage from './pages/UserInventoryPage.jsx'
+import DepartmentsPage from './pages/DepartmentsPage.jsx'
 
 function ProtectedRoute({ children, adminOnly = false }) {
   const { user, token } = useAuth()
@@ -45,6 +46,7 @@ export default function App() {
         <Route path="/units" element={<ProtectedRoute adminOnly><UnitsPage /></ProtectedRoute>} />
         <Route path="/vendors" element={<ProtectedRoute adminOnly><VendorsPage /></ProtectedRoute>} />
         <Route path="/users" element={<ProtectedRoute adminOnly><UsersPage /></ProtectedRoute>} />
+        <Route path="/departments" element={<ProtectedRoute adminOnly><DepartmentsPage /></ProtectedRoute>} />
         <Route path="/reports" element={<ProtectedRoute adminOnly><ReportsPage /></ProtectedRoute>} />
       </Route>
     </Routes>

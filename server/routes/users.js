@@ -8,9 +8,11 @@ const router = express.Router()
 router.get('/', auth, adminOnly, async (req, res) => {
   try {
     const users = await all(`
-      SELECT u.id, u.username, u.email, u.role, u.active, u.created_at, b.name AS branch_name
+      SELECT u.id, u.username, u.email, u.role, u.active, u.created_at,
+        b.name AS branch_name, d.name AS department_name, u.department_id
       FROM users u
       LEFT JOIN branches b ON u.branch_id = b.id
+      LEFT JOIN departments d ON u.department_id = d.id
       ORDER BY u.username
     `)
     res.json(users)
@@ -21,7 +23,7 @@ router.get('/', auth, adminOnly, async (req, res) => {
 
 router.post('/', auth, adminOnly, async (req, res) => {
   try {
-    const { username, email, password, role = 'staff', branch_id = null } = req.body
+    const { username, email, password, role = 'staff', branch_id = null, department_id = null } = req.body
     if (!username || !email || !password) {
       return res.status(400).json({ error: 'username, email, and password are required' })
     }
@@ -30,8 +32,8 @@ router.post('/', auth, adminOnly, async (req, res) => {
     }
     const hashed = await bcrypt.hash(password, 10)
     const result = await run(
-      `INSERT INTO users (username, email, password, role, branch_id) VALUES ($1, $2, $3, $4, $5) RETURNING id`,
-      [username, email, hashed, role, branch_id]
+      `INSERT INTO users (username, email, password, role, branch_id, department_id) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+      [username, email, hashed, role, branch_id, department_id]
     )
     await logAction(req.user.id, 'CREATE_USER', 'user', result.lastID, `Created user: ${username}`)
     res.status(201).json({ id: result.lastID, username, email, role, message: 'User created successfully' })
@@ -46,7 +48,7 @@ router.post('/', auth, adminOnly, async (req, res) => {
 router.put('/:id', auth, adminOnly, async (req, res) => {
   try {
     const { id } = req.params
-    const { username, email, password, role, branch_id, active } = req.body
+    const { username, email, password, role, branch_id, department_id, active } = req.body
 
     const user = await get('SELECT * FROM users WHERE id = $1', [id])
     if (!user) return res.status(404).json({ error: 'User not found' })
@@ -55,9 +57,9 @@ router.put('/:id', auth, adminOnly, async (req, res) => {
     if (password) hashedPassword = await bcrypt.hash(password, 10)
 
     await run(
-      `UPDATE users SET username = $1, email = $2, password = $3, role = $4, branch_id = $5, active = $6 WHERE id = $7`,
+      `UPDATE users SET username = $1, email = $2, password = $3, role = $4, branch_id = $5, department_id = $6, active = $7 WHERE id = $8`,
       [username || user.username, email || user.email, hashedPassword,
-        role || user.role, branch_id ?? user.branch_id, active ?? user.active, id]
+        role || user.role, branch_id ?? user.branch_id, department_id ?? user.department_id, active ?? user.active, id]
     )
     await logAction(req.user.id, 'UPDATE_USER', 'user', id, `Updated user: ${username || user.username}`)
     res.json({ message: 'User updated successfully' })

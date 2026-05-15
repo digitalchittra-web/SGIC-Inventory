@@ -73,6 +73,12 @@ export async function initDB() {
     created_at TIMESTAMPTZ DEFAULT NOW()
   )`)
 
+  await query(`CREATE TABLE IF NOT EXISTS departments (
+    id SERIAL PRIMARY KEY,
+    name TEXT UNIQUE NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+  )`)
+
   await query(`CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
     username TEXT NOT NULL,
@@ -80,6 +86,7 @@ export async function initDB() {
     password TEXT NOT NULL,
     role TEXT NOT NULL CHECK(role IN ('admin','staff')),
     branch_id INTEGER REFERENCES branches(id),
+    department_id INTEGER REFERENCES departments(id),
     active INTEGER DEFAULT 1,
     created_at TIMESTAMPTZ DEFAULT NOW()
   )`)
@@ -195,6 +202,15 @@ export async function initDB() {
     console.log(`Created default fiscal year: ${fyName}`)
   }
 
+  // Always seed departments if not present
+  const existingDept = await get('SELECT id FROM departments LIMIT 1')
+  if (!existingDept) {
+    for (const dept of ['Admin', 'Underwriting', 'Claim', 'Marketing', 'Reinsurance']) {
+      await query(`INSERT INTO departments (name) VALUES ($1) ON CONFLICT (name) DO NOTHING`, [dept])
+    }
+    console.log('Seeded departments')
+  }
+
   // Seed data if empty
   const existingUser = await get('SELECT id FROM users LIMIT 1')
   if (!existingUser) {
@@ -213,6 +229,10 @@ export async function initDB() {
     await query(`INSERT INTO branches (name, location) VALUES ($1,$2) ON CONFLICT DO NOTHING`, ['Head Office', 'Kathmandu'])
     await query(`INSERT INTO branches (name, location) VALUES ($1,$2)`, ['Kathmandu Branch', 'Kathmandu'])
     await query(`INSERT INTO branches (name, location) VALUES ($1,$2)`, ['Pokhara Branch', 'Pokhara'])
+
+    for (const dept of ['Admin', 'Underwriting', 'Claim', 'Marketing', 'Reinsurance']) {
+      await query(`INSERT INTO departments (name) VALUES ($1) ON CONFLICT (name) DO NOTHING`, [dept])
+    }
 
     const hashedPassword = await bcrypt.hash('Admin@123', 10)
     const branchRes = await query(`SELECT id FROM branches WHERE name = 'Head Office' LIMIT 1`)

@@ -2,11 +2,12 @@ import { useState, useEffect } from 'react'
 import api from '../api.js'
 import Modal from '../components/Modal.jsx'
 
-const empty = { username: '', email: '', password: '', role: 'staff', branch_id: '', active: 1 }
+const empty = { username: '', email: '', password: '', role: 'staff', branch_id: '', department_id: '', active: 1 }
 
 export default function UsersPage() {
   const [users, setUsers] = useState([])
   const [branches, setBranches] = useState([])
+  const [departments, setDepartments] = useState([])
   const [modal, setModal] = useState(null)
   const [form, setForm] = useState(empty)
   const [editId, setEditId] = useState(null)
@@ -17,18 +18,19 @@ export default function UsersPage() {
   useEffect(() => {
     fetch()
     api.get('/branches').then(r => setBranches(r.data)).catch(console.error)
+    api.get('/departments').then(r => setDepartments(r.data)).catch(console.error)
   }, [])
 
   function openAdd() { setForm(empty); setEditId(null); setError(''); setModal('add') }
   function openEdit(u) {
-    setForm({ username: u.username, email: u.email, password: '', role: u.role, branch_id: u.branch_id || '', active: u.active })
+    setForm({ username: u.username, email: u.email, password: '', role: u.role, branch_id: u.branch_id || '', department_id: u.department_id || '', active: u.active })
     setEditId(u.id); setError(''); setModal('edit')
   }
 
   async function handleSubmit(e) {
     e.preventDefault(); setError(''); setLoading(true)
     try {
-      const payload = { ...form, branch_id: form.branch_id || null }
+      const payload = { ...form, branch_id: form.branch_id || null, department_id: form.department_id || null }
       if (modal === 'add') await api.post('/users', payload)
       else {
         if (!payload.password) delete payload.password
@@ -58,15 +60,16 @@ export default function UsersPage() {
 
       <table className="table">
         <thead>
-          <tr><th>Username</th><th>Email</th><th>Role</th><th>Branch</th><th>Status</th><th>Created</th><th>Actions</th></tr>
+          <tr><th>Username</th><th>Email</th><th>Role</th><th>Department</th><th>Branch</th><th>Status</th><th>Created</th><th>Actions</th></tr>
         </thead>
         <tbody>
-          {users.length === 0 && <tr><td colSpan={7} className="empty-row">No users found.</td></tr>}
+          {users.length === 0 && <tr><td colSpan={8} className="empty-row">No users found.</td></tr>}
           {users.map(u => (
             <tr key={u.id}>
               <td><strong>{u.username}</strong></td>
               <td>{u.email}</td>
               <td><span className={'badge badge-' + u.role}>{u.role}</span></td>
+              <td>{u.department_name || '—'}</td>
               <td>{u.branch_name || '—'}</td>
               <td><span className={'badge ' + (u.active ? 'badge-active' : 'badge-inactive')}>{u.active ? 'Active' : 'Inactive'}</span></td>
               <td>{u.created_at?.slice(0,10)}</td>
@@ -101,6 +104,13 @@ export default function UsersPage() {
                 <select className="form-input" value={form.role} onChange={e => setForm(f => ({...f, role: e.target.value}))}>
                   <option value="staff">Staff</option>
                   <option value="admin">Admin</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Department</label>
+                <select className="form-input" value={form.department_id} onChange={e => setForm(f => ({...f, department_id: e.target.value}))}>
+                  <option value="">None</option>
+                  {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                 </select>
               </div>
               <div className="form-group">
