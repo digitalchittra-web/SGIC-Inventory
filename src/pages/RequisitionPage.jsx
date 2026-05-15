@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import api from '../api.js'
 import Modal from '../components/Modal.jsx'
+import ItemPicker from '../components/ItemPicker.jsx'
 import { useAuth } from '../store.jsx'
 
 // ── Status badge ────────────────────────────────────────────────────────────
@@ -83,11 +84,16 @@ export default function RequisitionPage() {
   }
 
   function handleReviewClick() {
-    const valid = formRows.every(r => r.itemId && r.quantity >= 1)
-    if (!valid) { setFormError('Every row must have an item and quantity ≥ 1.'); return }
-    // No duplicate items
-    const ids = formRows.map(r => r.itemId)
-    if (new Set(ids).size !== ids.length) { setFormError('Duplicate items are not allowed.'); return }
+    const validRows = formRows.filter(r => r.itemId)
+    const emptyRows = formRows.filter(r => !r.itemId)
+
+    if (emptyRows.length > 0) { setFormError('All rows must have an item selected.'); return }
+    if (!validRows.every(r => r.quantity >= 1)) { setFormError('All quantities must be ≥ 1.'); return }
+
+    // Check no duplicate items
+    const ids = validRows.map(r => r.itemId)
+    if (new Set(ids).size !== ids.length) { setFormError('Duplicate items are not allowed. Please remove duplicates.'); return }
+
     setFormError('')
     setShowConfirm(true)
   }
@@ -296,22 +302,18 @@ export default function RequisitionPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {formRows.map((row, i) => (
+                    {formRows.map((row, i) => {
+                      const selectedIds = formRows.map(r => r.itemId).filter(Boolean)
+                      const availableItems = items.filter(it => !selectedIds.includes(String(it.id)) || String(it.id) === row.itemId)
+                      return (
                       <tr key={i}>
                         <td style={tdStyle}>
-                          <select
-                            className="form-input"
-                            style={{ width: 200 }}
+                          <ItemPicker
+                            items={availableItems}
                             value={row.itemId}
-                            onChange={e => updateFormRow(i, 'itemId', e.target.value)}
-                          >
-                            <option value="">— select item —</option>
-                            {items.map(it => (
-                              <option key={it.id} value={String(it.id)}>
-                                {it.item_code} — {it.name}
-                              </option>
-                            ))}
-                          </select>
+                            onChange={v => updateFormRow(i, 'itemId', v)}
+                            placeholder="Search item…"
+                          />
                         </td>
                         <td style={tdStyle}>
                           <input
@@ -324,12 +326,13 @@ export default function RequisitionPage() {
                           />
                         </td>
                         <td style={tdStyle}>
-                          <input
+                          <textarea
                             className="form-input"
-                            style={{ width: 180 }}
+                            rows={2}
+                            style={{ width: '100%', resize: 'none' }}
                             value={row.description}
                             onChange={e => updateFormRow(i, 'description', e.target.value)}
-                            placeholder="Purpose / note"
+                            placeholder="Purpose / notes…"
                           />
                         </td>
                         <td style={{ ...tdStyle, textAlign: 'center' }}>
@@ -340,7 +343,7 @@ export default function RequisitionPage() {
                           </button>
                         </td>
                       </tr>
-                    ))}
+                    )})}
                   </tbody>
                 </table>
               </div>
@@ -378,11 +381,11 @@ export default function RequisitionPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {formRows.map((row, i) => {
+                  {formRows.filter(r => r.itemId).map((row, i) => {
                     const it = items.find(x => String(x.id) === row.itemId)
                     return (
                       <tr key={i}>
-                        <td style={tdStyle}><strong>{it?.name}</strong> <span style={{ color: '#9ca3af', fontSize: 11 }}>({it?.item_code})</span></td>
+                        <td style={tdStyle}><strong>{it?.name}</strong></td>
                         <td style={tdStyle}>{row.quantity} {it?.unit || ''}</td>
                         <td style={tdStyle}>{row.description || '—'}</td>
                       </tr>

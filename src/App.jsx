@@ -13,12 +13,20 @@ import VendorsPage from './pages/VendorsPage.jsx'
 import UsersPage from './pages/UsersPage.jsx'
 import ReportsPage from './pages/ReportsPage.jsx'
 import RequisitionPage from './pages/RequisitionPage.jsx'
+import UserInventoryPage from './pages/UserInventoryPage.jsx'
 
 function ProtectedRoute({ children, adminOnly = false }) {
   const { user, token } = useAuth()
   if (!token || !user) return <Navigate to="/login" replace />
   if (adminOnly && user.role !== 'admin') return <Navigate to="/dashboard" replace />
   return children
+}
+
+function InventoryWrapper() {
+  const { user } = useAuth()
+  return user?.role === 'admin'
+    ? <ProtectedRoute adminOnly><InventoryPage /></ProtectedRoute>
+    : <UserInventoryPage />
 }
 
 export default function App() {
@@ -29,7 +37,7 @@ export default function App() {
       <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/requisitions" element={<RequisitionPage />} />
-        <Route path="/inventory" element={<ProtectedRoute adminOnly><InventoryPage /></ProtectedRoute>} />
+        <Route path="/inventory" element={<InventoryWrapper />} />
         <Route path="/inbound" element={<ProtectedRoute adminOnly><InboundPage /></ProtectedRoute>} />
         <Route path="/outbound" element={<ProtectedRoute adminOnly><OutboundPage /></ProtectedRoute>} />
         <Route path="/branches" element={<BranchesPage />} />
