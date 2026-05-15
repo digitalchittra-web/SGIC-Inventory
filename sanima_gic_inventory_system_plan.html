@@ -1,0 +1,243 @@
+
+<h2 class="sr-only">Sanima GIC Insurance — Inventory Management System Plan</h2>
+
+<div style="padding: 1.5rem 0;">
+
+  <!-- Header -->
+  <div style="margin-bottom: 2rem;">
+    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
+      <div style="width: 36px; height: 36px; background: #E6F1FB; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+        <i class="ti ti-building-store" style="font-size: 18px; color: #185FA5;" aria-hidden="true"></i>
+      </div>
+      <span style="font-size: 13px; font-weight: 500; color: #185FA5; letter-spacing: 0.06em; text-transform: uppercase;">Sanima GIC Insurance</span>
+    </div>
+    <h1 style="font-size: 22px; font-weight: 500; color: var(--color-text-primary); margin: 0 0 4px;">Inventory Management System</h1>
+    <p style="font-size: 14px; color: var(--color-text-secondary); margin: 0;">Office Supplies · Head Office → Branch Distribution · Role-Based Access</p>
+  </div>
+
+  <!-- Role Hierarchy -->
+  <div style="margin-bottom: 2rem;">
+    <p style="font-size: 12px; font-weight: 500; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.07em; margin: 0 0 10px;">User hierarchy</p>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+      <!-- Admin -->
+      <div style="background: #E6F1FB; border-radius: var(--border-radius-lg); padding: 1rem 1.25rem; border: 0.5px solid #B5D4F4;">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
+          <i class="ti ti-shield-lock" style="font-size: 18px; color: #185FA5;" aria-hidden="true"></i>
+          <span style="font-weight: 500; font-size: 15px; color: #0C447C;">Admin</span>
+          <span style="margin-left: auto; font-size: 11px; background: #185FA5; color: #E6F1FB; padding: 2px 8px; border-radius: 20px;">Full access</span>
+        </div>
+        <ul style="margin: 0; padding-left: 0; list-style: none; display: flex; flex-direction: column; gap: 6px;">
+          <li style="font-size: 13px; color: #0C447C; display: flex; align-items: center; gap: 6px;"><i class="ti ti-users" style="font-size: 14px;" aria-hidden="true"></i> Add / manage users</li>
+          <li style="font-size: 13px; color: #0C447C; display: flex; align-items: center; gap: 6px;"><i class="ti ti-activity" style="font-size: 14px;" aria-hidden="true"></i> View user activity logs</li>
+          <li style="font-size: 13px; color: #0C447C; display: flex; align-items: center; gap: 6px;"><i class="ti ti-chart-bar" style="font-size: 14px;" aria-hidden="true"></i> Access all reports</li>
+          <li style="font-size: 13px; color: #0C447C; display: flex; align-items: center; gap: 6px;"><i class="ti ti-package" style="font-size: 14px;" aria-hidden="true"></i> Full inventory control</li>
+          <li style="font-size: 13px; color: #0C447C; display: flex; align-items: center; gap: 6px;"><i class="ti ti-truck" style="font-size: 14px;" aria-hidden="true"></i> Manage outbound transfers</li>
+        </ul>
+      </div>
+      <!-- User -->
+      <div style="background: var(--color-background-secondary); border-radius: var(--border-radius-lg); padding: 1rem 1.25rem; border: 0.5px solid var(--color-border-tertiary);">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
+          <i class="ti ti-user" style="font-size: 18px; color: var(--color-text-secondary);" aria-hidden="true"></i>
+          <span style="font-weight: 500; font-size: 15px; color: var(--color-text-primary);">Staff / User</span>
+          <span style="margin-left: auto; font-size: 11px; background: var(--color-background-primary); color: var(--color-text-secondary); padding: 2px 8px; border-radius: 20px; border: 0.5px solid var(--color-border-secondary);">Limited access</span>
+        </div>
+        <ul style="margin: 0; padding-left: 0; list-style: none; display: flex; flex-direction: column; gap: 6px;">
+          <li style="font-size: 13px; color: var(--color-text-primary); display: flex; align-items: center; gap: 6px;"><i class="ti ti-plus" style="font-size: 14px;" aria-hidden="true"></i> Add new inventory items</li>
+          <li style="font-size: 13px; color: var(--color-text-primary); display: flex; align-items: center; gap: 6px;"><i class="ti ti-edit" style="font-size: 14px;" aria-hidden="true"></i> Modify item details</li>
+          <li style="font-size: 13px; color: var(--color-text-primary); display: flex; align-items: center; gap: 6px;"><i class="ti ti-trash" style="font-size: 14px;" aria-hidden="true"></i> Delete items</li>
+          <li style="font-size: 13px; color: var(--color-text-primary); display: flex; align-items: center; gap: 6px;"><i class="ti ti-send" style="font-size: 14px;" aria-hidden="true"></i> Create outbound transfers</li>
+          <li style="font-size: 13px; color: #888780; display: flex; align-items: center; gap: 6px;"><i class="ti ti-lock" style="font-size: 14px;" aria-hidden="true"></i> <span style="text-decoration: line-through;">User mgmt / Reports</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Core Modules -->
+  <div style="margin-bottom: 2rem;">
+    <p style="font-size: 12px; font-weight: 500; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.07em; margin: 0 0 10px;">System modules</p>
+    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
+
+      <div style="background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 1rem;">
+        <i class="ti ti-clipboard-list" style="font-size: 20px; color: #185FA5; margin-bottom: 8px; display: block;" aria-hidden="true"></i>
+        <p style="font-weight: 500; font-size: 14px; margin: 0 0 4px; color: var(--color-text-primary);">Item master</p>
+        <p style="font-size: 12px; color: var(--color-text-secondary); margin: 0; line-height: 1.5;">Item code, name, category, unit, vendor, reorder level</p>
+      </div>
+
+      <div style="background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 1rem;">
+        <i class="ti ti-arrow-down-circle" style="font-size: 20px; color: #0F6E56; margin-bottom: 8px; display: block;" aria-hidden="true"></i>
+        <p style="font-weight: 500; font-size: 14px; margin: 0 0 4px; color: var(--color-text-primary);">Inbound (purchase)</p>
+        <p style="font-size: 12px; color: var(--color-text-secondary); margin: 0; line-height: 1.5;">Actual purchase price per unit, vendor, invoice no., date, quantity</p>
+      </div>
+
+      <div style="background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 1rem;">
+        <i class="ti ti-arrow-up-circle" style="font-size: 20px; color: #993C1D; margin-bottom: 8px; display: block;" aria-hidden="true"></i>
+        <p style="font-weight: 500; font-size: 14px; margin: 0 0 4px; color: var(--color-text-primary);">Outbound (transfers)</p>
+        <p style="font-size: 12px; color: var(--color-text-secondary); margin: 0; line-height: 1.5;">Issued at weighted average cost, destination branch, quantity, date</p>
+      </div>
+
+      <div style="background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 1rem;">
+        <i class="ti ti-git-branch" style="font-size: 20px; color: #534AB7; margin-bottom: 8px; display: block;" aria-hidden="true"></i>
+        <p style="font-weight: 500; font-size: 14px; margin: 0 0 4px; color: var(--color-text-primary);">Branch management</p>
+        <p style="font-size: 12px; color: var(--color-text-secondary); margin: 0; line-height: 1.5;">Head office + all branches, transfer history per branch</p>
+      </div>
+
+      <div style="background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 1rem;">
+        <i class="ti ti-users" style="font-size: 20px; color: #BA7517; margin-bottom: 8px; display: block;" aria-hidden="true"></i>
+        <p style="font-weight: 500; font-size: 14px; margin: 0 0 4px; color: var(--color-text-primary);">User management</p>
+        <p style="font-size: 12px; color: var(--color-text-secondary); margin: 0; line-height: 1.5;">Admin only — add/edit/deactivate users, assign roles</p>
+      </div>
+
+      <div style="background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 1rem;">
+        <i class="ti ti-report-analytics" style="font-size: 20px; color: #639922; margin-bottom: 8px; display: block;" aria-hidden="true"></i>
+        <p style="font-weight: 500; font-size: 14px; margin: 0 0 4px; color: var(--color-text-primary);">Reports & audit log</p>
+        <p style="font-size: 12px; color: var(--color-text-secondary); margin: 0; line-height: 1.5;">Stock valuation, transfer history, user activity, low-stock alerts</p>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Costing Logic -->
+  <div style="margin-bottom: 2rem;">
+    <p style="font-size: 12px; font-weight: 500; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.07em; margin: 0 0 10px;">Costing logic</p>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+      <div style="background: #E1F5EE; border-radius: var(--border-radius-lg); padding: 1rem 1.25rem; border: 0.5px solid #9FE1CB;">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+          <i class="ti ti-arrow-down-circle" style="font-size: 16px; color: #0F6E56;" aria-hidden="true"></i>
+          <span style="font-weight: 500; font-size: 14px; color: #085041;">Inbound cost</span>
+        </div>
+        <p style="font-size: 13px; color: #085041; margin: 0; line-height: 1.6;">Recorded at <strong style="font-weight: 500;">actual purchase price</strong> — the exact price on the vendor invoice. Each batch can have a different unit price.</p>
+      </div>
+      <div style="background: #FAECE7; border-radius: var(--border-radius-lg); padding: 1rem 1.25rem; border: 0.5px solid #F5C4B3;">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+          <i class="ti ti-arrow-up-circle" style="font-size: 16px; color: #993C1D;" aria-hidden="true"></i>
+          <span style="font-weight: 500; font-size: 14px; color: #712B13;">Outbound cost</span>
+        </div>
+        <p style="font-size: 13px; color: #712B13; margin: 0; line-height: 1.6;">Issued at <strong style="font-weight: 500;">weighted average cost</strong> — total stock value ÷ total quantity on hand, recalculated after every inbound transaction.</p>
+      </div>
+    </div>
+    <div style="background: var(--color-background-secondary); border-radius: var(--border-radius-md); padding: 0.75rem 1rem; margin-top: 10px; border: 0.5px solid var(--color-border-tertiary);">
+      <p style="font-size: 12px; color: var(--color-text-secondary); margin: 0; font-family: var(--font-mono);">WAC = (Current stock value + New purchase value) ÷ (Current qty + New qty)</p>
+    </div>
+  </div>
+
+  <!-- Inventory Item Fields -->
+  <div style="margin-bottom: 2rem;">
+    <p style="font-size: 12px; font-weight: 500; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.07em; margin: 0 0 10px;">Item record fields</p>
+    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
+      <div style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--color-background-primary); border-radius: var(--border-radius-md); border: 0.5px solid var(--color-border-tertiary);">
+        <i class="ti ti-hash" style="font-size: 14px; color: var(--color-text-secondary);" aria-hidden="true"></i>
+        <span style="font-size: 13px; color: var(--color-text-primary);">Item code</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--color-background-primary); border-radius: var(--border-radius-md); border: 0.5px solid var(--color-border-tertiary);">
+        <i class="ti ti-forms" style="font-size: 14px; color: var(--color-text-secondary);" aria-hidden="true"></i>
+        <span style="font-size: 13px; color: var(--color-text-primary);">Item name</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--color-background-primary); border-radius: var(--border-radius-md); border: 0.5px solid var(--color-border-tertiary);">
+        <i class="ti ti-tag" style="font-size: 14px; color: var(--color-text-secondary);" aria-hidden="true"></i>
+        <span style="font-size: 13px; color: var(--color-text-primary);">Category</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--color-background-primary); border-radius: var(--border-radius-md); border: 0.5px solid var(--color-border-tertiary);">
+        <i class="ti ti-ruler" style="font-size: 14px; color: var(--color-text-secondary);" aria-hidden="true"></i>
+        <span style="font-size: 13px; color: var(--color-text-primary);">Unit of measure</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--color-background-primary); border-radius: var(--border-radius-md); border: 0.5px solid var(--color-border-tertiary);">
+        <i class="ti ti-packages" style="font-size: 14px; color: var(--color-text-secondary);" aria-hidden="true"></i>
+        <span style="font-size: 13px; color: var(--color-text-primary);">Current quantity</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--color-background-primary); border-radius: var(--border-radius-md); border: 0.5px solid var(--color-border-tertiary);">
+        <i class="ti ti-currency-rupee-nepalese" style="font-size: 14px; color: var(--color-text-secondary);" aria-hidden="true"></i>
+        <span style="font-size: 13px; color: var(--color-text-primary);">Weighted avg cost</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--color-background-primary); border-radius: var(--border-radius-md); border: 0.5px solid var(--color-border-tertiary);">
+        <i class="ti ti-building" style="font-size: 14px; color: var(--color-text-secondary);" aria-hidden="true"></i>
+        <span style="font-size: 13px; color: var(--color-text-primary);">Vendor name</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--color-background-primary); border-radius: var(--border-radius-md); border: 0.5px solid var(--color-border-tertiary);">
+        <i class="ti ti-phone" style="font-size: 14px; color: var(--color-text-secondary);" aria-hidden="true"></i>
+        <span style="font-size: 13px; color: var(--color-text-primary);">Vendor contact</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--color-background-primary); border-radius: var(--border-radius-md); border: 0.5px solid var(--color-border-tertiary);">
+        <i class="ti ti-alert-triangle" style="font-size: 14px; color: var(--color-text-secondary);" aria-hidden="true"></i>
+        <span style="font-size: 13px; color: var(--color-text-primary);">Reorder level</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Transfer Flow -->
+  <div style="margin-bottom: 2rem;">
+    <p style="font-size: 12px; font-weight: 500; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.07em; margin: 0 0 10px;">Transfer flow — head office → branches</p>
+    <div style="background: var(--color-background-secondary); border-radius: var(--border-radius-lg); border: 0.5px solid var(--color-border-tertiary); overflow: hidden;">
+      <div style="display: grid; grid-template-columns: 1fr 24px 1fr 24px 1fr 24px 1fr; align-items: center; padding: 1rem 1.25rem; gap: 0;">
+        <div style="text-align: center;">
+          <div style="width: 36px; height: 36px; background: #E6F1FB; border-radius: 50%; margin: 0 auto 6px; display: flex; align-items: center; justify-content: center;"><i class="ti ti-building-skyscraper" style="font-size: 16px; color: #185FA5;" aria-hidden="true"></i></div>
+          <p style="font-size: 12px; font-weight: 500; color: #185FA5; margin: 0;">Head office</p>
+          <p style="font-size: 11px; color: var(--color-text-secondary); margin: 0;">Source</p>
+        </div>
+        <i class="ti ti-arrow-right" style="font-size: 16px; color: var(--color-text-secondary); text-align: center;" aria-hidden="true"></i>
+        <div style="text-align: center;">
+          <div style="width: 36px; height: 36px; background: #FAEEDA; border-radius: 50%; margin: 0 auto 6px; display: flex; align-items: center; justify-content: center;"><i class="ti ti-file-invoice" style="font-size: 16px; color: #BA7517;" aria-hidden="true"></i></div>
+          <p style="font-size: 12px; font-weight: 500; color: #BA7517; margin: 0;">Transfer note</p>
+          <p style="font-size: 11px; color: var(--color-text-secondary); margin: 0;">Created by user</p>
+        </div>
+        <i class="ti ti-arrow-right" style="font-size: 16px; color: var(--color-text-secondary); text-align: center;" aria-hidden="true"></i>
+        <div style="text-align: center;">
+          <div style="width: 36px; height: 36px; background: #EAF3DE; border-radius: 50%; margin: 0 auto 6px; display: flex; align-items: center; justify-content: center;"><i class="ti ti-calculator" style="font-size: 16px; color: #3B6D11;" aria-hidden="true"></i></div>
+          <p style="font-size: 12px; font-weight: 500; color: #3B6D11; margin: 0;">WAC applied</p>
+          <p style="font-size: 11px; color: var(--color-text-secondary); margin: 0;">Auto-calculated</p>
+        </div>
+        <i class="ti ti-arrow-right" style="font-size: 16px; color: var(--color-text-secondary); text-align: center;" aria-hidden="true"></i>
+        <div style="text-align: center;">
+          <div style="width: 36px; height: 36px; background: #E1F5EE; border-radius: 50%; margin: 0 auto 6px; display: flex; align-items: center; justify-content: center;"><i class="ti ti-git-branch" style="font-size: 16px; color: #0F6E56;" aria-hidden="true"></i></div>
+          <p style="font-size: 12px; font-weight: 500; color: #0F6E56; margin: 0;">Branch stock</p>
+          <p style="font-size: 11px; color: var(--color-text-secondary); margin: 0;">Updated</p>
+        </div>
+      </div>
+      <div style="border-top: 0.5px solid var(--color-border-tertiary); padding: 0.75rem 1.25rem; display: flex; gap: 20px;">
+        <span style="font-size: 12px; color: var(--color-text-secondary);">Transfer fields: destination branch · item · qty · date · reference no. · issued cost (WAC) · authorized by</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reports -->
+  <div>
+    <p style="font-size: 12px; font-weight: 500; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.07em; margin: 0 0 10px;">Reports (admin only)</p>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+      <div style="padding: 10px 14px; background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-md); display: flex; align-items: center; gap: 10px;">
+        <i class="ti ti-stack-2" style="font-size: 16px; color: #185FA5;" aria-hidden="true"></i>
+        <div>
+          <p style="font-size: 13px; font-weight: 500; margin: 0; color: var(--color-text-primary);">Current stock report</p>
+          <p style="font-size: 11px; color: var(--color-text-secondary); margin: 0;">Quantity on hand, WAC, total value</p>
+        </div>
+      </div>
+      <div style="padding: 10px 14px; background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-md); display: flex; align-items: center; gap: 10px;">
+        <i class="ti ti-truck-delivery" style="font-size: 16px; color: #0F6E56;" aria-hidden="true"></i>
+        <div>
+          <p style="font-size: 13px; font-weight: 500; margin: 0; color: var(--color-text-primary);">Branch transfer report</p>
+          <p style="font-size: 11px; color: var(--color-text-secondary); margin: 0;">What was sent, when, and to which branch</p>
+        </div>
+      </div>
+      <div style="padding: 10px 14px; background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-md); display: flex; align-items: center; gap: 10px;">
+        <i class="ti ti-alert-circle" style="font-size: 16px; color: #BA7517;" aria-hidden="true"></i>
+        <div>
+          <p style="font-size: 13px; font-weight: 500; margin: 0; color: var(--color-text-primary);">Low stock alert report</p>
+          <p style="font-size: 11px; color: var(--color-text-secondary); margin: 0;">Items below reorder level</p>
+        </div>
+      </div>
+      <div style="padding: 10px 14px; background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-md); display: flex; align-items: center; gap: 10px;">
+        <i class="ti ti-history" style="font-size: 16px; color: #534AB7;" aria-hidden="true"></i>
+        <div>
+          <p style="font-size: 13px; font-weight: 500; margin: 0; color: var(--color-text-primary);">User activity log</p>
+          <p style="font-size: 11px; color: var(--color-text-secondary); margin: 0;">Who did what and when</p>
+        </div>
+      </div>
+    </div>
+    <div style="margin-top: 12px; padding: 10px 14px; background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-md); display: flex; align-items: center; gap: 10px;">
+      <i class="ti ti-receipt" style="font-size: 16px; color: #993C1D;" aria-hidden="true"></i>
+      <div>
+        <p style="font-size: 13px; font-weight: 500; margin: 0; color: var(--color-text-primary);">Purchase / inbound history</p>
+        <p style="font-size: 11px; color: var(--color-text-secondary); margin: 0;">Vendor, invoice no., actual price paid, quantity, date — filterable by vendor or item</p>
+      </div>
+    </div>
+  </div>
+
+</div>

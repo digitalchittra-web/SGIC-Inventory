@@ -9,6 +9,7 @@ export default function ItemPicker({
   placeholder = 'Select…',
   getSubLabel = null,
   searchKeys = null,
+  hideQuantity = false,
 }) {
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
@@ -25,7 +26,13 @@ export default function ItemPicker({
     if (item.item_code) parts.push(item.item_code)
     if (item.current_qty !== undefined) {
       const unitText = item.unit ? ` [${item.unit}]` : ''
-      parts.push(`Available: ${item.current_qty}${unitText}`)
+      if (hideQuantity) {
+        // For users: show only unit without quantity
+        parts.push(unitText ? `Available${unitText}` : 'Available')
+      } else {
+        // For admins: show full availability with quantity
+        parts.push(`Available: ${item.current_qty}${unitText}`)
+      }
     }
     return parts.join(' · ')
   }

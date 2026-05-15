@@ -80,7 +80,7 @@ export default function UserInventoryPage() {
               <td>
                 <strong>{item.name}</strong>
                 <span style={{ color: '#9ca3af', fontSize: 12, marginLeft: 6 }}>
-                  Available: {item.current_qty}
+                  {item.unit ? `Available [${item.unit}]` : 'Available'}
                 </span>
               </td>
               <td>{item.category || '—'}</td>

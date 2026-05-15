@@ -313,6 +313,7 @@ export default function RequisitionPage() {
                             value={row.itemId}
                             onChange={v => updateFormRow(i, 'itemId', v)}
                             placeholder="Search item…"
+                            hideQuantity={!isAdmin}
                           />
                         </td>
                         <td style={tdStyle}>
