@@ -23,7 +23,10 @@ export default function ItemPicker({
     if (getSubLabel) return getSubLabel(item)
     let parts = []
     if (item.item_code) parts.push(item.item_code)
-    if (item.current_qty !== undefined) parts.push(`Available: ${item.current_qty} ${item.unit || ''}`)
+    if (item.current_qty !== undefined) {
+      const unitText = item.unit ? ` [${item.unit}]` : ''
+      parts.push(`Available: ${item.current_qty}${unitText}`)
+    }
     return parts.join(' · ')
   }
 

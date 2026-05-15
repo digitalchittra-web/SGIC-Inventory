@@ -77,9 +77,14 @@ export default function UserInventoryPage() {
           )}
           {filtered.map(item => (
             <tr key={item.id}>
-              <td><strong>{item.name}</strong></td>
+              <td>
+                <strong>{item.name}</strong>
+                <span style={{ color: '#9ca3af', fontSize: 12, marginLeft: 6 }}>
+                  Available: {item.current_qty}
+                </span>
+              </td>
               <td>{item.category || '—'}</td>
-              <td>{item.unit || '—'}</td>
+              <td>{item.unit ? `[${item.unit}]` : '—'}</td>
             </tr>
           ))}
         </tbody>
