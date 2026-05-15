@@ -4,6 +4,13 @@ import Modal from '../components/Modal.jsx'
 import { useAuth } from '../store.jsx'
 import { formatNumber, formatCurrency } from '../utils.js'
 
+const LOW_LEVEL_OPTIONS = [
+  { label: '— none —', value: '' },
+  { label: 'Low (5)', value: '5' },
+  { label: 'Medium (10)', value: '10' },
+  { label: 'High (20)', value: '20' },
+]
+
 const emptyRow = (item_code = '') => ({
   item_code,
   name: '',
@@ -285,7 +292,7 @@ export default function InventoryPage() {
                     <th style={thStyle}>Name *</th>
                     <th style={thStyle}>Category</th>
                     <th style={thStyle}>Unit</th>
-                    <th style={thStyle}>Reorder Level</th>
+                    <th style={thStyle}>Low Level</th>
                     <th style={{ ...thStyle, width: 36 }}></th>
                   </tr>
                 </thead>
@@ -318,7 +325,7 @@ export default function InventoryPage() {
                       <td style={tdStyle}>
                         <select
                           className="form-input"
-                          style={{ width: 130 }}
+                          style={{ width: 180 }}
                           value={row.category}
                           onChange={e => updateBulkRow(i, 'category', e.target.value)}
                         >
@@ -338,15 +345,16 @@ export default function InventoryPage() {
                         </select>
                       </td>
                       <td style={tdStyle}>
-                        <input
+                        <select
                           className="form-input"
-                          style={{ width: 90 }}
-                          type="number"
-                          min="0"
+                          style={{ width: 110 }}
                           value={row.reorder_level}
                           onChange={e => updateBulkRow(i, 'reorder_level', e.target.value)}
-                          placeholder="0"
-                        />
+                        >
+                          {LOW_LEVEL_OPTIONS.map(o => (
+                            <option key={o.value} value={o.value}>{o.label}</option>
+                          ))}
+                        </select>
                       </td>
                       <td style={{ ...tdStyle, textAlign: 'center' }}>
                         <button
