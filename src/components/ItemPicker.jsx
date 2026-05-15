@@ -38,16 +38,14 @@ export default function ItemPicker({
     if (disabled) return
     if (!open && buttonRef.current) {
       const rect = buttonRef.current.getBoundingClientRect()
-      const popupHeight = 320
-      const spaceBelow = window.innerHeight - rect.bottom
-      const top = spaceBelow >= popupHeight
-        ? rect.bottom + 4
-        : rect.top - popupHeight - 4
+      const spaceBelow = window.innerHeight - rect.bottom - 8
+      const maxHeight = Math.min(320, Math.max(120, spaceBelow))
       setPopupStyle({
         position: 'fixed',
-        top,
+        top: rect.bottom + 4,
         left: rect.left,
         width: Math.max(rect.width, 380),
+        maxHeight,
         zIndex: 99999,
       })
     }
@@ -128,7 +126,7 @@ export default function ItemPicker({
             border: '1px solid #e5e7eb',
             borderRadius: 10,
             boxShadow: '0 8px 32px rgba(0,0,0,0.16)',
-            maxHeight: 320,
+            maxHeight: popupStyle.maxHeight || 320,
             display: 'flex',
             flexDirection: 'column',
             overflow: 'hidden',
