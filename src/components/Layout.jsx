@@ -3,15 +3,16 @@ import { useAuth } from '../store.jsx'
 
 const navItems = [
   { to: '/dashboard', label: 'Dashboard', icon: '⊞' },
-  { to: '/inventory', label: 'Inventory', icon: '📦' },
-  { to: '/inbound', label: 'Inbound (Purchase)', icon: '↓' },
-  { to: '/outbound', label: 'Outbound (Transfer)', icon: '↑' },
+  { to: '/requisitions', label: 'Requisitions', icon: '📋' },
+  { to: '/inventory', label: 'Inventory', icon: '📦', adminOnly: true },
+  { to: '/inbound', label: 'Inbound (Purchase)', icon: '↓', adminOnly: true },
+  { to: '/outbound', label: 'Outbound (Transfer)', icon: '↑', adminOnly: true },
   { to: '/branches', label: 'Branches', icon: '🏢' },
   { to: '/categories', label: 'Categories', icon: '🏷️', adminOnly: true },
   { to: '/units', label: 'Units', icon: '📏', adminOnly: true },
   { to: '/vendors', label: 'Vendors', icon: '🏭', adminOnly: true },
   { to: '/users', label: 'Users', icon: '👥', adminOnly: true },
-  { to: '/reports', label: 'Reports', icon: '📊' },
+  { to: '/reports', label: 'Reports', icon: '📊', adminOnly: true },
 ]
 
 export default function Layout() {

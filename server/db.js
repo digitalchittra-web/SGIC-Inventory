@@ -151,6 +151,29 @@ export async function initDB() {
     created_at TIMESTAMPTZ DEFAULT NOW()
   )`)
 
+  await query(`CREATE TABLE IF NOT EXISTS requisitions (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','approved','rejected')),
+    remarks TEXT,
+    reference_no TEXT,
+    approved_by INTEGER REFERENCES users(id),
+    approved_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+  )`)
+
+  await query(`CREATE TABLE IF NOT EXISTS requisition_items (
+    id SERIAL PRIMARY KEY,
+    requisition_id INTEGER NOT NULL REFERENCES requisitions(id) ON DELETE CASCADE,
+    item_id INTEGER NOT NULL REFERENCES items(id),
+    item_name TEXT NOT NULL,
+    item_code TEXT NOT NULL,
+    unit TEXT,
+    quantity INTEGER NOT NULL,
+    approved_quantity INTEGER,
+    description TEXT
+  )`)
+
   await query(`CREATE TABLE IF NOT EXISTS fiscal_years (
     id SERIAL PRIMARY KEY,
     name TEXT UNIQUE NOT NULL,

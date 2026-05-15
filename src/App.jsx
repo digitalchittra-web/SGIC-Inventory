@@ -12,6 +12,7 @@ import UnitsPage from './pages/UnitsPage.jsx'
 import VendorsPage from './pages/VendorsPage.jsx'
 import UsersPage from './pages/UsersPage.jsx'
 import ReportsPage from './pages/ReportsPage.jsx'
+import RequisitionPage from './pages/RequisitionPage.jsx'
 
 function ProtectedRoute({ children, adminOnly = false }) {
   const { user, token } = useAuth()
@@ -27,15 +28,16 @@ export default function App() {
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
       <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
         <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/inventory" element={<InventoryPage />} />
-        <Route path="/inbound" element={<InboundPage />} />
-        <Route path="/outbound" element={<OutboundPage />} />
+        <Route path="/requisitions" element={<RequisitionPage />} />
+        <Route path="/inventory" element={<ProtectedRoute adminOnly><InventoryPage /></ProtectedRoute>} />
+        <Route path="/inbound" element={<ProtectedRoute adminOnly><InboundPage /></ProtectedRoute>} />
+        <Route path="/outbound" element={<ProtectedRoute adminOnly><OutboundPage /></ProtectedRoute>} />
         <Route path="/branches" element={<BranchesPage />} />
         <Route path="/categories" element={<ProtectedRoute adminOnly><CategoriesPage /></ProtectedRoute>} />
         <Route path="/units" element={<ProtectedRoute adminOnly><UnitsPage /></ProtectedRoute>} />
         <Route path="/vendors" element={<ProtectedRoute adminOnly><VendorsPage /></ProtectedRoute>} />
         <Route path="/users" element={<ProtectedRoute adminOnly><UsersPage /></ProtectedRoute>} />
-        <Route path="/reports" element={<ReportsPage />} />
+        <Route path="/reports" element={<ProtectedRoute adminOnly><ReportsPage /></ProtectedRoute>} />
       </Route>
     </Routes>
   )

@@ -15,6 +15,7 @@ import vendorRoutes from './routes/vendors.js'
 import categoryRoutes from './routes/categories.js'
 import unitRoutes from './routes/units.js'
 import fiscalYearRoutes from './routes/fiscalYears.js'
+import requisitionRoutes from './routes/requisitions.js'
 
 const app = express()
 const PORT = process.env.PORT || 3001
@@ -41,6 +42,7 @@ app.use('/api/vendors', vendorRoutes)
 app.use('/api/categories', categoryRoutes)
 app.use('/api/units', unitRoutes)
 app.use('/api/fiscal-years', fiscalYearRoutes)
+app.use('/api/requisitions', requisitionRoutes)
 
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }))
 
