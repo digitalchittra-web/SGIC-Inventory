@@ -55,6 +55,24 @@ export default function RequisitionPage() {
   const [editError, setEditError] = useState('')
   const [editSubmitting, setEditSubmitting] = useState(false)
 
+  // Item summary modal
+  const [showSummary, setShowSummary] = useState(false)
+  const [summaryData, setSummaryData] = useState([])
+  const [summaryLoading, setSummaryLoading] = useState(false)
+
+  async function openSummary() {
+    setShowSummary(true)
+    setSummaryLoading(true)
+    try {
+      const res = await api.get('/requisitions/item-summary')
+      setSummaryData(res.data)
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setSummaryLoading(false)
+    }
+  }
+
   // Filters
   const [statusFilter, setStatusFilter] = useState('')
 
@@ -258,9 +276,14 @@ export default function RequisitionPage() {
             {isAdmin ? 'Review and approve staff requisition requests' : 'Request items from inventory'}
           </p>
         </div>
-        {!isAdmin && (
-          <button className="btn btn-primary" onClick={handleOpenCreate}>+ New Requisition</button>
-        )}
+        <div style={{ display: 'flex', gap: 8 }}>
+          {isAdmin && (
+            <button className="btn btn-secondary" onClick={openSummary}>Total Items</button>
+          )}
+          {!isAdmin && (
+            <button className="btn btn-primary" onClick={handleOpenCreate}>+ New Requisition</button>
+          )}
+        </div>
       </div>
 
       {/* Filter */}
@@ -556,6 +579,54 @@ export default function RequisitionPage() {
               </div>
             </>
           )}
+        </Modal>
+      )}
+
+      {/* ── Item Summary Modal ── */}
+      {showSummary && (
+        <Modal title="Total Items Requested" onClose={() => setShowSummary(false)}>
+          {summaryLoading ? (
+            <div style={{ padding: 24, textAlign: 'center', color: '#6b7280' }}>Loading…</div>
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                <thead>
+                  <tr style={{ background: '#F9FAFB' }}>
+                    <th style={thStyle}>Item</th>
+                    <th style={{ ...thStyle, textAlign: 'right' }}>Total Requested</th>
+                    <th style={{ ...thStyle, textAlign: 'right' }}>Available</th>
+                    <th style={{ ...thStyle, textAlign: 'right' }}>Difference</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {summaryData.length === 0 && (
+                    <tr><td colSpan={4} style={{ ...tdStyle, textAlign: 'center', color: '#9ca3af' }}>No data found.</td></tr>
+                  )}
+                  {summaryData.map((row, i) => {
+                    const diff = (row.available_qty ?? 0) - row.total_requested
+                    return (
+                      <tr key={i} style={{ background: diff < 0 ? '#FFF5F5' : 'transparent' }}>
+                        <td style={tdStyle}>
+                          <strong>{row.item_name}</strong>{' '}
+                          <span style={{ color: '#9ca3af', fontSize: 11 }}>({row.item_code})</span>
+                        </td>
+                        <td style={{ ...tdStyle, textAlign: 'right' }}>{row.total_requested} {row.unit || ''}</td>
+                        <td style={{ ...tdStyle, textAlign: 'right', fontWeight: 600, color: row.available_qty <= 0 ? '#DC2626' : '#065F46' }}>
+                          {row.available_qty ?? 0} {row.unit || ''}
+                        </td>
+                        <td style={{ ...tdStyle, textAlign: 'right', fontWeight: 700, color: diff < 0 ? '#DC2626' : '#065F46' }}>
+                          {diff >= 0 ? '+' : ''}{diff} {row.unit || ''}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+          <div className="modal-actions" style={{ marginTop: 16 }}>
+            <button className="btn btn-secondary" onClick={() => setShowSummary(false)}>Close</button>
+          </div>
         </Modal>
       )}
 
