@@ -91,6 +91,14 @@ export async function initDB() {
     created_at TIMESTAMPTZ DEFAULT NOW()
   )`)
 
+  // Migration: allow user_admin role if constraint is too restrictive
+  try {
+    await query(`ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check`)
+    await query(`ALTER TABLE users ADD CONSTRAINT users_role_check CHECK(role IN ('admin','staff','user_admin'))`)
+  } catch (e) {
+    console.log('Role constraint migration skipped:', e.message)
+  }
+
   await query(`CREATE TABLE IF NOT EXISTS items (
     id SERIAL PRIMARY KEY,
     item_code TEXT UNIQUE NOT NULL,
