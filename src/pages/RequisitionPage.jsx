@@ -395,22 +395,11 @@ export default function RequisitionPage() {
         </>
       )}
 
-      {/* Admin: placeholder + bottom buttons */}
-      {isAdmin && (
-        <div style={{ textAlign: 'center', color: '#9ca3af', padding: '40px 0 20px', fontSize: 14 }}>
-          Use the buttons below to view Transfer or Purchase requests.
-        </div>
-      )}
-
       {/* ── Admin bottom action buttons ── */}
       {isAdmin && (
-        <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
-          <button className="btn btn-secondary" style={{ flex: 1, padding: '12px 0', fontSize: 15, fontWeight: 600 }} onClick={openTransferModal}>
-            Transfer Requests
-          </button>
-          <button className="btn btn-primary" style={{ flex: 1, padding: '12px 0', fontSize: 15, fontWeight: 600 }} onClick={openPurchaseModal}>
-            Purchase Requests
-          </button>
+        <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+          <button className="btn btn-secondary" onClick={openTransferModal}>Transfer Requests</button>
+          <button className="btn btn-primary" onClick={openPurchaseModal}>Purchase Requests</button>
         </div>
       )}
 
