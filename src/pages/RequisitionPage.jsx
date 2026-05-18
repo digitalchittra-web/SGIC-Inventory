@@ -330,11 +330,7 @@ export default function RequisitionPage() {
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           {isAdmin && (
-            <>
-              <button className="btn btn-secondary" onClick={openSummary}>Total Items</button>
-              <button className="btn btn-secondary" onClick={() => { setStatusFilter(''); fetchRequisitions() }}>Transfer</button>
-              <button className="btn btn-primary" onClick={openPurchaseModal}>Purchase</button>
-            </>
+            <button className="btn btn-secondary" onClick={openSummary}>Total Items</button>
           )}
           {!isAdmin && (
             <button className="btn btn-primary" onClick={handleOpenCreate}>+ New Requisition</button>
@@ -402,6 +398,18 @@ export default function RequisitionPage() {
           ))}
         </tbody>
       </table>
+
+      {/* ── Admin bottom action buttons ── */}
+      {isAdmin && (
+        <div style={{ display: 'flex', gap: 12, marginTop: 20 }}>
+          <button className="btn btn-secondary" style={{ flex: 1, padding: '10px 0', fontSize: 14 }} onClick={() => { setStatusFilter(''); fetchRequisitions() }}>
+            Transfer Requests
+          </button>
+          <button className="btn btn-primary" style={{ flex: 1, padding: '10px 0', fontSize: 14 }} onClick={openPurchaseModal}>
+            Purchase Requests
+          </button>
+        </div>
+      )}
 
       {/* ── Create Modal ── */}
       {showCreate && (
