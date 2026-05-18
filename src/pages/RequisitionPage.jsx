@@ -478,10 +478,10 @@ export default function RequisitionPage() {
                 <thead>
                   <tr style={{ background: '#F9FAFB' }}>
                     <th style={thStyle}>Item</th>
-                    <th style={thStyle}>
-                      {selected.status === 'approved' ? 'Approved Qty' : 'Requested Qty'}
-                    </th>
+                    <th style={thStyle}>Requested Qty</th>
+                    <th style={thStyle}>Available Qty</th>
                     {isAdmin && selected.status === 'pending' && <th style={thStyle}>Approve Qty</th>}
+                    {selected.status === 'approved' && <th style={thStyle}>Approved Qty</th>}
                     <th style={thStyle}>Description</th>
                   </tr>
                 </thead>
@@ -492,11 +492,15 @@ export default function RequisitionPage() {
                         <strong>{item.item_name}</strong>{' '}
                         <span style={{ color: '#9ca3af', fontSize: 11 }}>({item.item_code})</span>
                       </td>
+                      <td style={tdStyle}>{item.quantity} {item.unit || ''}</td>
                       <td style={tdStyle}>
-                        {selected.status === 'approved'
-                          ? (item.approved_quantity ?? item.quantity)
-                          : item.quantity
-                        } {item.unit || ''}
+                        <span style={{
+                          fontWeight: 600,
+                          color: item.current_qty <= 0 ? '#DC2626' : item.current_qty < item.quantity ? '#D97706' : '#065F46'
+                        }}>
+                          {item.current_qty ?? '—'}
+                        </span>
+                        {item.unit ? <span style={{ color: '#9ca3af', fontSize: 11, marginLeft: 3 }}>{item.unit}</span> : null}
                       </td>
                       {isAdmin && selected.status === 'pending' && (
                         <td style={tdStyle}>
@@ -509,6 +513,9 @@ export default function RequisitionPage() {
                           />
                           <span style={{ fontSize: 11, color: '#9ca3af', marginLeft: 4 }}>{item.unit || ''}</span>
                         </td>
+                      )}
+                      {selected.status === 'approved' && (
+                        <td style={tdStyle}>{item.approved_quantity ?? item.quantity} {item.unit || ''}</td>
                       )}
                       <td style={tdStyle}>{item.description || '—'}</td>
                     </tr>
