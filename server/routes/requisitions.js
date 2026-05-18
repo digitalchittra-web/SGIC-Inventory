@@ -68,20 +68,21 @@ router.get('/', auth, async (req, res) => {
   }
 })
 
-// GET item summary — total requested qty across all requisitions vs available
+// GET item summary — total requested qty from pending requisitions vs available
 router.get('/item-summary', auth, adminOnly, async (req, res) => {
   try {
     const rows = await all(`
       SELECT
+        ri.item_id,
         ri.item_name,
         ri.item_code,
         ri.unit,
-        SUM(ri.quantity) AS total_requested,
-        i.current_qty AS available_qty
+        CAST(SUM(ri.quantity) AS INTEGER) AS total_requested,
+        CAST(i.current_qty AS INTEGER) AS available_qty
       FROM requisition_items ri
       JOIN items i ON ri.item_id = i.id
       JOIN requisitions r ON ri.requisition_id = r.id
-      WHERE r.status != 'rejected'
+      WHERE r.status = 'pending'
       GROUP BY ri.item_id, ri.item_name, ri.item_code, ri.unit, i.current_qty
       ORDER BY ri.item_name
     `)

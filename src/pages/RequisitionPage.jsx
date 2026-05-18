@@ -584,7 +584,7 @@ export default function RequisitionPage() {
 
       {/* ── Item Summary Modal ── */}
       {showSummary && (
-        <Modal title="Total Items Requested" onClose={() => setShowSummary(false)}>
+        <Modal title="Total Items — Pending Requests" onClose={() => setShowSummary(false)}>
           {summaryLoading ? (
             <div style={{ padding: 24, textAlign: 'center', color: '#6b7280' }}>Loading…</div>
           ) : (
