@@ -59,15 +59,17 @@ export default function RequisitionPage() {
   const [showSummary, setShowSummary] = useState(false)
   const [summaryData, setSummaryData] = useState([])
   const [summaryLoading, setSummaryLoading] = useState(false)
+  const [summaryError, setSummaryError] = useState('')
 
   async function openSummary() {
     setShowSummary(true)
     setSummaryLoading(true)
+    setSummaryError('')
     try {
       const res = await api.get('/requisitions/item-summary')
       setSummaryData(res.data)
     } catch (err) {
-      console.error(err)
+      setSummaryError(err.response?.data?.error || `API error: ${err.message}`)
     } finally {
       setSummaryLoading(false)
     }
@@ -587,6 +589,8 @@ export default function RequisitionPage() {
         <Modal title="Total Items — Pending Requests" onClose={() => setShowSummary(false)}>
           {summaryLoading ? (
             <div style={{ padding: 24, textAlign: 'center', color: '#6b7280' }}>Loading…</div>
+          ) : summaryError ? (
+            <div className="alert alert-error">{summaryError}</div>
           ) : (
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
