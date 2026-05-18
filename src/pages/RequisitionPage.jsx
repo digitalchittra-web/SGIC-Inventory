@@ -75,13 +75,15 @@ export default function RequisitionPage() {
     }
   }
 
-  // Transfer requests modal (admin)
-  const [showTransfer, setShowTransfer] = useState(false)
+  // Transfer / Purchase panel (admin) — inline, not modal
+  const [activePanel, setActivePanel] = useState(null) // null | 'transfer' | 'purchase'
 
-  function openTransferModal() { setShowTransfer(true); fetchRequisitions() }
+  function openTransferModal() {
+    setActivePanel(prev => prev === 'transfer' ? null : 'transfer')
+    fetchRequisitions()
+  }
 
-  // Purchase requests modal (admin)
-  const [showPurchase, setShowPurchase] = useState(false)
+  // Purchase requests panel (admin)
   const [purchaseRequests, setPurchaseRequests] = useState([])
   const [purchaseLoading, setPurchaseLoading] = useState(false)
   const [selectedPR, setSelectedPR] = useState(null)
@@ -89,14 +91,17 @@ export default function RequisitionPage() {
   const [prError, setPrError] = useState('')
 
   async function openPurchaseModal() {
-    setShowPurchase(true)
-    setPurchaseLoading(true)
-    setSelectedPR(null)
-    try {
-      const res = await api.get('/purchase-requests')
-      setPurchaseRequests(res.data)
-    } catch (err) { console.error(err) }
-    finally { setPurchaseLoading(false) }
+    const next = activePanel === 'purchase' ? null : 'purchase'
+    setActivePanel(next)
+    if (next === 'purchase') {
+      setPurchaseLoading(true)
+      setSelectedPR(null)
+      try {
+        const res = await api.get('/purchase-requests')
+        setPurchaseRequests(res.data)
+      } catch (err) { console.error(err) }
+      finally { setPurchaseLoading(false) }
+    }
   }
 
   async function openPRDetail(pr) {
@@ -395,11 +400,119 @@ export default function RequisitionPage() {
         </>
       )}
 
-      {/* ── Admin bottom action buttons ── */}
+      {/* ── Admin inline panels ── */}
+      {isAdmin && activePanel === 'transfer' && (
+        <div style={{ marginBottom: 80 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
+            <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700 }}>Transfer Requests</h3>
+            <select className="form-input" style={{ width: 150 }} value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
+              <option value="">All statuses</option>
+              <option value="pending">Pending</option>
+              <option value="approved">Approved</option>
+            </select>
+            <button className="btn btn-secondary" onClick={fetchRequisitions}>↻</button>
+          </div>
+          <table className="table">
+            <thead>
+              <tr>
+                <th>#</th><th>Requested By</th><th>Items</th><th>Date</th><th>Status</th><th>Reference</th><th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading && <tr><td colSpan={7} className="empty-row">Loading…</td></tr>}
+              {!loading && requisitions.length === 0 && <tr><td colSpan={7} className="empty-row">No transfer requests found.</td></tr>}
+              {requisitions.map(req => (
+                <tr key={req.id} style={req.status === 'approved' ? { background: '#F0FDF4' } : req.status === 'rejected' ? { background: '#FFF5F5' } : {}}>
+                  <td><strong>#{req.id}</strong></td>
+                  <td>{req.requested_by}</td>
+                  <td>{req.item_count} item{req.item_count !== 1 ? 's' : ''}</td>
+                  <td>{req.created_at?.slice(0, 10)}</td>
+                  <td><StatusBadge status={req.status} /></td>
+                  <td style={{ fontFamily: 'monospace' }}>{req.reference_no || '—'}</td>
+                  <td className="actions">
+                    <button className="btn btn-sm btn-secondary" onClick={() => openDetail(req)}>{req.status === 'pending' ? 'Review' : 'View'}</button>
+                    {(req.status === 'pending' || req.status === 'rejected') && (
+                      <button className="btn btn-sm btn-danger" onClick={() => handleDelete(req)}>Delete</button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {isAdmin && activePanel === 'purchase' && (
+        <div style={{ marginBottom: 80 }}>
+          <h3 style={{ margin: '0 0 10px', fontSize: 15, fontWeight: 700 }}>Purchase Requests</h3>
+          {selectedPR ? (
+            <>
+              <button className="btn btn-secondary btn-sm" style={{ marginBottom: 10 }} onClick={() => setSelectedPR(null)}>← Back to list</button>
+              <div style={{ marginBottom: 10, fontSize: 13, color: '#6b7280' }}>
+                Submitted by <strong>{selectedPR.requested_by}</strong> on {selectedPR.created_at?.slice(0,10)}
+                {' '}<StatusBadge status={selectedPR.status} />
+              </div>
+              <table className="table">
+                <thead><tr><th>Item</th><th>Qty</th><th>Unit Price</th><th>Vendor</th><th>Invoice</th></tr></thead>
+                <tbody>
+                  {selectedPR.items?.map(item => (
+                    <tr key={item.id}>
+                      <td><strong>{item.item_name}</strong> <span style={{ color: '#9ca3af', fontSize: 11 }}>({item.item_code})</span></td>
+                      <td>{item.quantity} {item.unit || ''}</td>
+                      <td>Rs {parseFloat(item.unit_price).toLocaleString()}</td>
+                      <td>{item.vendor_name || '—'}</td>
+                      <td>{item.invoice_no || '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {selectedPR.remarks && <div style={{ background: '#F9FAFB', borderRadius: 6, padding: '8px 12px', fontSize: 13, margin: '10px 0' }}><strong>Remarks:</strong> {selectedPR.remarks}</div>}
+              {prError && <div className="alert alert-error" style={{ marginBottom: 10 }}>{prError}</div>}
+              {selectedPR.status === 'pending' && (
+                <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                  <button className="btn btn-danger" onClick={handlePRReject} disabled={prActionLoading}>{prActionLoading ? 'Processing…' : '✕ Reject'}</button>
+                  <button className="btn btn-primary" onClick={handlePRApprove} disabled={prActionLoading}>{prActionLoading ? 'Approving…' : '✓ Approve & Record'}</button>
+                </div>
+              )}
+            </>
+          ) : purchaseLoading ? (
+            <div style={{ color: '#6b7280', padding: 16 }}>Loading…</div>
+          ) : (
+            <table className="table">
+              <thead><tr><th>#</th><th>Requested By</th><th>Items</th><th>Date</th><th>Status</th><th>Action</th></tr></thead>
+              <tbody>
+                {purchaseRequests.length === 0 && <tr><td colSpan={6} className="empty-row">No purchase requests found.</td></tr>}
+                {purchaseRequests.map(pr => (
+                  <tr key={pr.id} style={{ background: pr.status === 'approved' ? '#F0FDF4' : pr.status === 'rejected' ? '#FFF5F5' : '' }}>
+                    <td><strong>#{pr.id}</strong></td>
+                    <td>{pr.requested_by}</td>
+                    <td>{pr.item_count} item{pr.item_count !== 1 ? 's' : ''}</td>
+                    <td>{pr.created_at?.slice(0,10)}</td>
+                    <td><StatusBadge status={pr.status} /></td>
+                    <td><button className="btn btn-sm btn-secondary" onClick={() => openPRDetail(pr)}>{pr.status === 'pending' ? 'Review' : 'View'}</button></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
+
+      {/* ── Admin fixed bottom bar ── */}
       {isAdmin && (
-        <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-          <button className="btn btn-secondary" onClick={openTransferModal}>Transfer Requests</button>
-          <button className="btn btn-primary" onClick={openPurchaseModal}>Purchase Requests</button>
+        <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: '#fff', borderTop: '1px solid #E5E7EB', padding: '10px 24px', display: 'flex', gap: 10, zIndex: 100 }}>
+          <button
+            className={activePanel === 'transfer' ? 'btn btn-primary' : 'btn btn-secondary'}
+            onClick={openTransferModal}
+          >
+            Transfer Requests
+          </button>
+          <button
+            className={activePanel === 'purchase' ? 'btn btn-primary' : 'btn btn-secondary'}
+            onClick={openPurchaseModal}
+          >
+            Purchase Requests
+          </button>
         </div>
       )}
 
@@ -638,160 +751,6 @@ export default function RequisitionPage() {
         </Modal>
       )}
 
-      {/* ── Transfer Requests Modal (Admin) ── */}
-      {showTransfer && (
-        <Modal title="Transfer Requests" onClose={() => setShowTransfer(false)}>
-          <div className="filter-bar" style={{ marginBottom: 12 }}>
-            <select className="form-input" style={{ width: 160 }} value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
-              <option value="">All statuses</option>
-              <option value="pending">Pending</option>
-              <option value="approved">Approved</option>
-            </select>
-            <button className="btn btn-secondary" onClick={fetchRequisitions}>↻ Refresh</button>
-          </div>
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-              <thead>
-                <tr style={{ background: '#F9FAFB' }}>
-                  <th style={thStyle}>#</th>
-                  <th style={thStyle}>Requested By</th>
-                  <th style={thStyle}>Items</th>
-                  <th style={thStyle}>Date</th>
-                  <th style={thStyle}>Status</th>
-                  <th style={thStyle}>Reference</th>
-                  <th style={thStyle}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading && <tr><td colSpan={7} style={{ ...tdStyle, textAlign: 'center', color: '#9ca3af' }}>Loading…</td></tr>}
-                {!loading && requisitions.length === 0 && (
-                  <tr><td colSpan={7} style={{ ...tdStyle, textAlign: 'center', color: '#9ca3af' }}>No transfer requests found.</td></tr>
-                )}
-                {requisitions.map(req => (
-                  <tr key={req.id}
-                    style={req.status === 'approved' ? { background: '#F0FDF4' } : req.status === 'rejected' ? { background: '#FFF5F5' } : {}}
-                  >
-                    <td style={tdStyle}><strong>#{req.id}</strong></td>
-                    <td style={tdStyle}>{req.requested_by}</td>
-                    <td style={tdStyle}>{req.item_count} item{req.item_count !== 1 ? 's' : ''}</td>
-                    <td style={tdStyle}>{req.created_at?.slice(0, 10)}</td>
-                    <td style={tdStyle}><StatusBadge status={req.status} /></td>
-                    <td style={{ ...tdStyle, fontFamily: 'monospace' }}>{req.reference_no || '—'}</td>
-                    <td style={tdStyle} className="actions">
-                      <button className="btn btn-sm btn-secondary" onClick={() => openDetail(req)}>
-                        {req.status === 'pending' ? 'Review' : 'View'}
-                      </button>
-                      {(req.status === 'pending' || req.status === 'rejected') && (
-                        <button className="btn btn-sm btn-danger" onClick={() => handleDelete(req)}>Delete</button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <div className="modal-actions" style={{ marginTop: 12 }}>
-            <button className="btn btn-secondary" onClick={() => setShowTransfer(false)}>Close</button>
-          </div>
-        </Modal>
-      )}
-
-      {/* ── Purchase Requests Modal (Admin) ── */}
-      {showPurchase && (
-        <Modal title="Purchase Requests" onClose={() => { setShowPurchase(false); setSelectedPR(null) }}>
-          {selectedPR ? (
-            <>
-              <button className="btn btn-secondary btn-sm" style={{ marginBottom: 12 }} onClick={() => setSelectedPR(null)}>← Back to list</button>
-              <div style={{ marginBottom: 10, fontSize: 13, color: '#6b7280' }}>
-                Submitted by <strong>{selectedPR.requested_by}</strong> on {selectedPR.created_at?.slice(0,10)}
-                {' '}<StatusBadge status={selectedPR.status} />
-              </div>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, marginBottom: 14 }}>
-                <thead>
-                  <tr style={{ background: '#F9FAFB' }}>
-                    <th style={thStyle}>Item</th>
-                    <th style={thStyle}>Qty</th>
-                    <th style={thStyle}>Unit Price</th>
-                    <th style={thStyle}>Vendor</th>
-                    <th style={thStyle}>Invoice</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {selectedPR.items?.map(item => (
-                    <tr key={item.id}>
-                      <td style={tdStyle}><strong>{item.item_name}</strong> <span style={{ color: '#9ca3af', fontSize: 11 }}>({item.item_code})</span></td>
-                      <td style={tdStyle}>{item.quantity} {item.unit || ''}</td>
-                      <td style={tdStyle}>Rs {parseFloat(item.unit_price).toLocaleString()}</td>
-                      <td style={tdStyle}>{item.vendor_name || '—'}</td>
-                      <td style={tdStyle}>{item.invoice_no || '—'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              {selectedPR.remarks && (
-                <div style={{ background: '#F9FAFB', borderRadius: 6, padding: '8px 12px', fontSize: 13, marginBottom: 12 }}>
-                  <strong>Remarks:</strong> {selectedPR.remarks}
-                </div>
-              )}
-              {prError && <div className="alert alert-error" style={{ marginBottom: 10 }}>{prError}</div>}
-              <div className="modal-actions">
-                <button className="btn btn-secondary" onClick={() => setSelectedPR(null)}>Cancel</button>
-                {selectedPR.status === 'pending' && (
-                  <>
-                    <button className="btn btn-danger" onClick={handlePRReject} disabled={prActionLoading}>
-                      {prActionLoading ? 'Processing…' : '✕ Reject'}
-                    </button>
-                    <button className="btn btn-primary" onClick={handlePRApprove} disabled={prActionLoading}>
-                      {prActionLoading ? 'Approving…' : '✓ Approve & Record'}
-                    </button>
-                  </>
-                )}
-              </div>
-            </>
-          ) : (
-            <>
-              {purchaseLoading ? (
-                <div style={{ padding: 24, textAlign: 'center', color: '#6b7280' }}>Loading…</div>
-              ) : (
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-                  <thead>
-                    <tr style={{ background: '#F9FAFB' }}>
-                      <th style={thStyle}>#</th>
-                      <th style={thStyle}>Requested By</th>
-                      <th style={thStyle}>Items</th>
-                      <th style={thStyle}>Date</th>
-                      <th style={thStyle}>Status</th>
-                      <th style={thStyle}>Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {purchaseRequests.length === 0 && (
-                      <tr><td colSpan={6} style={{ ...tdStyle, textAlign: 'center', color: '#9ca3af' }}>No purchase requests found.</td></tr>
-                    )}
-                    {purchaseRequests.map(pr => (
-                      <tr key={pr.id} style={{ background: pr.status === 'approved' ? '#F0FDF4' : pr.status === 'rejected' ? '#FFF5F5' : '' }}>
-                        <td style={tdStyle}><strong>#{pr.id}</strong></td>
-                        <td style={tdStyle}>{pr.requested_by}</td>
-                        <td style={tdStyle}>{pr.item_count} item{pr.item_count !== 1 ? 's' : ''}</td>
-                        <td style={tdStyle}>{pr.created_at?.slice(0,10)}</td>
-                        <td style={tdStyle}><StatusBadge status={pr.status} /></td>
-                        <td style={tdStyle}>
-                          <button className="btn btn-sm btn-secondary" onClick={() => openPRDetail(pr)}>
-                            {pr.status === 'pending' ? 'Review' : 'View'}
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-              <div className="modal-actions" style={{ marginTop: 12 }}>
-                <button className="btn btn-secondary" onClick={() => setShowPurchase(false)}>Close</button>
-              </div>
-            </>
-          )}
-        </Modal>
-      )}
 
       {/* ── Item Summary Modal ── */}
       {showSummary && (
