@@ -98,9 +98,16 @@ export async function initDB() {
     console.log('department_id migration skipped:', e.message)
   }
 
-  // Migration: allow user_admin role if constraint is too restrictive
+  // Migration: allow user_admin role — find and drop any existing role check constraint
   try {
-    await query(`ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check`)
+    const constraints = await query(`
+      SELECT conname FROM pg_constraint
+      WHERE conrelid = 'users'::regclass AND contype = 'c'
+      AND pg_get_constraintdef(oid) LIKE '%role%'
+    `)
+    for (const row of constraints.rows) {
+      await query(`ALTER TABLE users DROP CONSTRAINT IF EXISTS "${row.conname}"`)
+    }
     await query(`ALTER TABLE users ADD CONSTRAINT users_role_check CHECK(role IN ('admin','staff','user_admin'))`)
   } catch (e) {
     console.log('Role constraint migration skipped:', e.message)
