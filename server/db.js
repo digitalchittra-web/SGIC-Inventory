@@ -91,6 +91,13 @@ export async function initDB() {
     created_at TIMESTAMPTZ DEFAULT NOW()
   )`)
 
+  // Migration: add department_id column if missing
+  try {
+    await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS department_id INTEGER REFERENCES departments(id)`)
+  } catch (e) {
+    console.log('department_id migration skipped:', e.message)
+  }
+
   // Migration: allow user_admin role if constraint is too restrictive
   try {
     await query(`ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check`)
