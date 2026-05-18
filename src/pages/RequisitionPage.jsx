@@ -75,6 +75,11 @@ export default function RequisitionPage() {
     }
   }
 
+  // Transfer requests modal (admin)
+  const [showTransfer, setShowTransfer] = useState(false)
+
+  function openTransferModal() { setShowTransfer(true); fetchRequisitions() }
+
   // Purchase requests modal (admin)
   const [showPurchase, setShowPurchase] = useState(false)
   const [purchaseRequests, setPurchaseRequests] = useState([])
@@ -338,74 +343,72 @@ export default function RequisitionPage() {
         </div>
       </div>
 
-      {/* Filter */}
-      <div className="filter-bar" style={{ marginBottom: 16 }}>
-        <select className="form-input" style={{ width: 180 }} value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
-          <option value="">All statuses</option>
-          <option value="pending">Pending</option>
-          <option value="approved">Approved</option>
-        </select>
-        <button className="btn btn-secondary" onClick={fetchRequisitions}>↻ Refresh</button>
-      </div>
+      {/* Staff: filter + list */}
+      {!isAdmin && (
+        <>
+          <div className="filter-bar" style={{ marginBottom: 16 }}>
+            <select className="form-input" style={{ width: 180 }} value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
+              <option value="">All statuses</option>
+              <option value="pending">Pending</option>
+              <option value="approved">Approved</option>
+            </select>
+            <button className="btn btn-secondary" onClick={fetchRequisitions}>↻ Refresh</button>
+          </div>
+          <table className="table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Items</th>
+                <th>Date</th>
+                <th>Status</th>
+                <th>Reference</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading && <tr><td colSpan={6} className="empty-row">Loading…</td></tr>}
+              {!loading && requisitions.length === 0 && (
+                <tr><td colSpan={6} className="empty-row">No requisitions found.</td></tr>
+              )}
+              {requisitions.map(req => (
+                <tr key={req.id}
+                  style={req.status === 'approved' ? { background: '#F0FDF4' } : req.status === 'rejected' ? { background: '#FFF5F5' } : {}}
+                >
+                  <td><strong>#{req.id}</strong></td>
+                  <td>{req.item_count} item{req.item_count !== 1 ? 's' : ''}</td>
+                  <td>{req.created_at?.slice(0, 10)}</td>
+                  <td><StatusBadge status={req.status} /></td>
+                  <td style={{ fontFamily: 'monospace' }}>{req.reference_no || '—'}</td>
+                  <td className="actions">
+                    <button className="btn btn-sm btn-secondary" onClick={() => openDetail(req)}>View</button>
+                    {req.status === 'pending' && (
+                      <>
+                        <button className="btn btn-sm btn-secondary" onClick={() => handleLoadAndEdit(req)}>Edit</button>
+                        <button className="btn btn-sm btn-danger" onClick={() => handleDelete(req)}>Delete</button>
+                      </>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>
+      )}
 
-      {/* List */}
-      <table className="table">
-        <thead>
-          <tr>
-            <th>#</th>
-            {isAdmin && <th>Requested By</th>}
-            <th>Items</th>
-            <th>Date</th>
-            <th>Status</th>
-            <th>Reference</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {loading && <tr><td colSpan={isAdmin ? 7 : 6} className="empty-row">Loading…</td></tr>}
-          {!loading && requisitions.length === 0 && (
-            <tr><td colSpan={isAdmin ? 7 : 6} className="empty-row">No requisitions found.</td></tr>
-          )}
-          {requisitions.map(req => (
-            <tr
-              key={req.id}
-              style={req.status === 'approved' ? { background: '#F0FDF4' } : req.status === 'rejected' ? { background: '#FFF5F5' } : {}}
-            >
-              <td><strong>#{req.id}</strong></td>
-              {isAdmin && <td>{req.requested_by}</td>}
-              <td>{req.item_count} item{req.item_count !== 1 ? 's' : ''}</td>
-              <td>{req.created_at?.slice(0, 10)}</td>
-              <td><StatusBadge status={req.status} /></td>
-              <td style={{ fontFamily: 'monospace' }}>{req.reference_no || '—'}</td>
-              <td className="actions">
-                <button className="btn btn-sm btn-secondary" onClick={() => openDetail(req)}>
-                  {isAdmin && req.status === 'pending' ? 'Review' : 'View'}
-                </button>
-                {isAdmin && req.status === 'pending' && (
-                  <button className="btn btn-sm btn-danger" onClick={() => handleDelete(req)}>Delete</button>
-                )}
-                {isAdmin && req.status === 'rejected' && (
-                  <button className="btn btn-sm btn-danger" onClick={() => handleDelete(req)}>Delete</button>
-                )}
-                {!isAdmin && req.status === 'pending' && (
-                  <>
-                    <button className="btn btn-sm btn-secondary" onClick={() => handleLoadAndEdit(req)}>Edit</button>
-                    <button className="btn btn-sm btn-danger" onClick={() => handleDelete(req)}>Delete</button>
-                  </>
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      {/* Admin: placeholder + bottom buttons */}
+      {isAdmin && (
+        <div style={{ textAlign: 'center', color: '#9ca3af', padding: '40px 0 20px', fontSize: 14 }}>
+          Use the buttons below to view Transfer or Purchase requests.
+        </div>
+      )}
 
       {/* ── Admin bottom action buttons ── */}
       {isAdmin && (
-        <div style={{ display: 'flex', gap: 12, marginTop: 20 }}>
-          <button className="btn btn-secondary" style={{ flex: 1, padding: '10px 0', fontSize: 14 }} onClick={() => { setStatusFilter(''); fetchRequisitions() }}>
+        <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
+          <button className="btn btn-secondary" style={{ flex: 1, padding: '12px 0', fontSize: 15, fontWeight: 600 }} onClick={openTransferModal}>
             Transfer Requests
           </button>
-          <button className="btn btn-primary" style={{ flex: 1, padding: '10px 0', fontSize: 14 }} onClick={openPurchaseModal}>
+          <button className="btn btn-primary" style={{ flex: 1, padding: '12px 0', fontSize: 15, fontWeight: 600 }} onClick={openPurchaseModal}>
             Purchase Requests
           </button>
         </div>
@@ -643,6 +646,64 @@ export default function RequisitionPage() {
               </div>
             </>
           )}
+        </Modal>
+      )}
+
+      {/* ── Transfer Requests Modal (Admin) ── */}
+      {showTransfer && (
+        <Modal title="Transfer Requests" onClose={() => setShowTransfer(false)}>
+          <div className="filter-bar" style={{ marginBottom: 12 }}>
+            <select className="form-input" style={{ width: 160 }} value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
+              <option value="">All statuses</option>
+              <option value="pending">Pending</option>
+              <option value="approved">Approved</option>
+            </select>
+            <button className="btn btn-secondary" onClick={fetchRequisitions}>↻ Refresh</button>
+          </div>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+              <thead>
+                <tr style={{ background: '#F9FAFB' }}>
+                  <th style={thStyle}>#</th>
+                  <th style={thStyle}>Requested By</th>
+                  <th style={thStyle}>Items</th>
+                  <th style={thStyle}>Date</th>
+                  <th style={thStyle}>Status</th>
+                  <th style={thStyle}>Reference</th>
+                  <th style={thStyle}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading && <tr><td colSpan={7} style={{ ...tdStyle, textAlign: 'center', color: '#9ca3af' }}>Loading…</td></tr>}
+                {!loading && requisitions.length === 0 && (
+                  <tr><td colSpan={7} style={{ ...tdStyle, textAlign: 'center', color: '#9ca3af' }}>No transfer requests found.</td></tr>
+                )}
+                {requisitions.map(req => (
+                  <tr key={req.id}
+                    style={req.status === 'approved' ? { background: '#F0FDF4' } : req.status === 'rejected' ? { background: '#FFF5F5' } : {}}
+                  >
+                    <td style={tdStyle}><strong>#{req.id}</strong></td>
+                    <td style={tdStyle}>{req.requested_by}</td>
+                    <td style={tdStyle}>{req.item_count} item{req.item_count !== 1 ? 's' : ''}</td>
+                    <td style={tdStyle}>{req.created_at?.slice(0, 10)}</td>
+                    <td style={tdStyle}><StatusBadge status={req.status} /></td>
+                    <td style={{ ...tdStyle, fontFamily: 'monospace' }}>{req.reference_no || '—'}</td>
+                    <td style={tdStyle} className="actions">
+                      <button className="btn btn-sm btn-secondary" onClick={() => openDetail(req)}>
+                        {req.status === 'pending' ? 'Review' : 'View'}
+                      </button>
+                      {(req.status === 'pending' || req.status === 'rejected') && (
+                        <button className="btn btn-sm btn-danger" onClick={() => handleDelete(req)}>Delete</button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="modal-actions" style={{ marginTop: 12 }}>
+            <button className="btn btn-secondary" onClick={() => setShowTransfer(false)}>Close</button>
+          </div>
         </Modal>
       )}
 
