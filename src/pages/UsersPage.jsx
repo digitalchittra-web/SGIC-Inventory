@@ -68,7 +68,7 @@ export default function UsersPage() {
             <tr key={u.id}>
               <td><strong>{u.username}</strong></td>
               <td>{u.email}</td>
-              <td><span className={'badge badge-' + u.role}>{u.role}</span></td>
+              <td><span className={'badge badge-' + u.role}>{u.role === 'user_admin' ? 'User Admin' : u.role}</span></td>
               <td>{u.department_name || '—'}</td>
               <td>{u.branch_name || '—'}</td>
               <td><span className={'badge ' + (u.active ? 'badge-active' : 'badge-inactive')}>{u.active ? 'Active' : 'Inactive'}</span></td>
@@ -103,6 +103,7 @@ export default function UsersPage() {
                 <label className="form-label">Role</label>
                 <select className="form-input" value={form.role} onChange={e => setForm(f => ({...f, role: e.target.value}))}>
                   <option value="staff">Staff</option>
+                  <option value="user_admin">User Admin</option>
                   <option value="admin">Admin</option>
                 </select>
               </div>

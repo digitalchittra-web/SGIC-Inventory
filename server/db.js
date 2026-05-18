@@ -181,6 +181,29 @@ export async function initDB() {
     description TEXT
   )`)
 
+  await query(`CREATE TABLE IF NOT EXISTS purchase_requests (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    status TEXT DEFAULT 'pending',
+    remarks TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+  )`)
+
+  await query(`CREATE TABLE IF NOT EXISTS purchase_request_items (
+    id SERIAL PRIMARY KEY,
+    request_id INTEGER NOT NULL REFERENCES purchase_requests(id) ON DELETE CASCADE,
+    item_id INTEGER NOT NULL REFERENCES items(id),
+    item_name TEXT NOT NULL,
+    item_code TEXT NOT NULL,
+    unit TEXT,
+    quantity REAL NOT NULL,
+    unit_price REAL NOT NULL,
+    vendor_id INTEGER REFERENCES vendors(id),
+    vendor_name TEXT,
+    invoice_no TEXT,
+    invoice_date TEXT
+  )`)
+
   await query(`CREATE TABLE IF NOT EXISTS fiscal_years (
     id SERIAL PRIMARY KEY,
     name TEXT UNIQUE NOT NULL,

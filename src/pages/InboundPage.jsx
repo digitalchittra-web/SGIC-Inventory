@@ -138,15 +138,30 @@ export default function InboundPage() {
       }
 
       if (modal === 'add') {
-        for (const row of validRows) {
-          await api.post('/inbound', {
-            itemId: row.itemId,
-            quantity: parseFloat(row.quantity),
-            unitPrice: parseFloat(row.unitPrice),
-            vendorId: selectedVendorId,
-            invoiceNo: invoiceNo || null,
-            invoiceDate: invoiceDate || null
+        if (user?.role === 'user_admin') {
+          // user_admin: submit as purchase request for admin approval
+          await api.post('/purchase-requests', {
+            items: validRows.map(row => ({
+              itemId: row.itemId,
+              quantity: parseFloat(row.quantity),
+              unitPrice: parseFloat(row.unitPrice),
+              vendorId: selectedVendorId,
+              invoiceNo: invoiceNo || null,
+              invoiceDate: invoiceDate || null,
+            })),
+            remarks: invoiceNo ? `Invoice: ${invoiceNo}` : null,
           })
+        } else {
+          for (const row of validRows) {
+            await api.post('/inbound', {
+              itemId: row.itemId,
+              quantity: parseFloat(row.quantity),
+              unitPrice: parseFloat(row.unitPrice),
+              vendorId: selectedVendorId,
+              invoiceNo: invoiceNo || null,
+              invoiceDate: invoiceDate || null
+            })
+          }
         }
       } else {
         await api.put(`/inbound/${editId}`, {
@@ -279,7 +294,7 @@ export default function InboundPage() {
       </table>
 
       {modal && (
-        <Modal title={modal === 'add' ? 'Record Multiple Purchases' : 'Edit Purchase'} onClose={() => setModal(null)}>
+        <Modal title={modal === 'add' ? (user?.role === 'user_admin' ? 'Submit Purchase Request' : 'Record Multiple Purchases') : 'Edit Purchase'} onClose={() => setModal(null)}>
           <form onSubmit={handleSubmit}>
             {error && <div className="alert alert-error">{error}</div>}
             {modal === 'edit' && (
@@ -375,7 +390,7 @@ export default function InboundPage() {
             <div className="modal-actions">
               <button type="button" className="btn btn-secondary" onClick={() => setModal(null)}>Cancel</button>
               <button type="submit" className="btn btn-primary" disabled={loading}>
-                {loading ? 'Saving…' : modal === 'add' ? 'Record Purchases' : 'Save Changes'}
+                {loading ? 'Saving…' : modal === 'add' ? (user?.role === 'user_admin' ? 'Submit for Approval' : 'Record Purchases') : 'Save Changes'}
               </button>
             </div>
           </form>

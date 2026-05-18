@@ -27,8 +27,8 @@ router.post('/', auth, adminOnly, async (req, res) => {
     if (!username || !email || !password) {
       return res.status(400).json({ error: 'username, email, and password are required' })
     }
-    if (!['admin', 'staff'].includes(role)) {
-      return res.status(400).json({ error: 'Role must be admin or staff' })
+    if (!['admin', 'staff', 'user_admin'].includes(role)) {
+      return res.status(400).json({ error: 'Role must be admin, staff, or user_admin' })
     }
     const hashed = await bcrypt.hash(password, 10)
     const result = await run(

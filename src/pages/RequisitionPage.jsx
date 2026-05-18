@@ -75,6 +75,56 @@ export default function RequisitionPage() {
     }
   }
 
+  // Purchase requests modal (admin)
+  const [showPurchase, setShowPurchase] = useState(false)
+  const [purchaseRequests, setPurchaseRequests] = useState([])
+  const [purchaseLoading, setPurchaseLoading] = useState(false)
+  const [selectedPR, setSelectedPR] = useState(null)
+  const [prActionLoading, setPrActionLoading] = useState(false)
+  const [prError, setPrError] = useState('')
+
+  async function openPurchaseModal() {
+    setShowPurchase(true)
+    setPurchaseLoading(true)
+    setSelectedPR(null)
+    try {
+      const res = await api.get('/purchase-requests')
+      setPurchaseRequests(res.data)
+    } catch (err) { console.error(err) }
+    finally { setPurchaseLoading(false) }
+  }
+
+  async function openPRDetail(pr) {
+    try {
+      const res = await api.get(`/purchase-requests/${pr.id}`)
+      setSelectedPR(res.data)
+      setPrError('')
+    } catch (err) { console.error(err) }
+  }
+
+  async function handlePRApprove() {
+    setPrActionLoading(true); setPrError('')
+    try {
+      await api.post(`/purchase-requests/${selectedPR.id}/approve`)
+      setSelectedPR(null)
+      const res = await api.get('/purchase-requests')
+      setPurchaseRequests(res.data)
+    } catch (err) { setPrError(err.response?.data?.error || 'Failed') }
+    finally { setPrActionLoading(false) }
+  }
+
+  async function handlePRReject() {
+    if (!confirm('Reject this purchase request?')) return
+    setPrActionLoading(true); setPrError('')
+    try {
+      await api.post(`/purchase-requests/${selectedPR.id}/reject`)
+      setSelectedPR(null)
+      const res = await api.get('/purchase-requests')
+      setPurchaseRequests(res.data)
+    } catch (err) { setPrError(err.response?.data?.error || 'Failed') }
+    finally { setPrActionLoading(false) }
+  }
+
   // Filters
   const [statusFilter, setStatusFilter] = useState('')
 
@@ -280,7 +330,11 @@ export default function RequisitionPage() {
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           {isAdmin && (
-            <button className="btn btn-secondary" onClick={openSummary}>Total Items</button>
+            <>
+              <button className="btn btn-secondary" onClick={openSummary}>Total Items</button>
+              <button className="btn btn-secondary" onClick={() => { setStatusFilter(''); fetchRequisitions() }}>Transfer</button>
+              <button className="btn btn-primary" onClick={openPurchaseModal}>Purchase</button>
+            </>
           )}
           {!isAdmin && (
             <button className="btn btn-primary" onClick={handleOpenCreate}>+ New Requisition</button>
@@ -578,6 +632,103 @@ export default function RequisitionPage() {
                     {approving ? 'Processing…' : '✕ Mark as Invalid Slip'}
                   </button>
                 )}
+              </div>
+            </>
+          )}
+        </Modal>
+      )}
+
+      {/* ── Purchase Requests Modal (Admin) ── */}
+      {showPurchase && (
+        <Modal title="Purchase Requests" onClose={() => { setShowPurchase(false); setSelectedPR(null) }}>
+          {selectedPR ? (
+            <>
+              <button className="btn btn-secondary btn-sm" style={{ marginBottom: 12 }} onClick={() => setSelectedPR(null)}>← Back to list</button>
+              <div style={{ marginBottom: 10, fontSize: 13, color: '#6b7280' }}>
+                Submitted by <strong>{selectedPR.requested_by}</strong> on {selectedPR.created_at?.slice(0,10)}
+                {' '}<StatusBadge status={selectedPR.status} />
+              </div>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, marginBottom: 14 }}>
+                <thead>
+                  <tr style={{ background: '#F9FAFB' }}>
+                    <th style={thStyle}>Item</th>
+                    <th style={thStyle}>Qty</th>
+                    <th style={thStyle}>Unit Price</th>
+                    <th style={thStyle}>Vendor</th>
+                    <th style={thStyle}>Invoice</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {selectedPR.items?.map(item => (
+                    <tr key={item.id}>
+                      <td style={tdStyle}><strong>{item.item_name}</strong> <span style={{ color: '#9ca3af', fontSize: 11 }}>({item.item_code})</span></td>
+                      <td style={tdStyle}>{item.quantity} {item.unit || ''}</td>
+                      <td style={tdStyle}>Rs {parseFloat(item.unit_price).toLocaleString()}</td>
+                      <td style={tdStyle}>{item.vendor_name || '—'}</td>
+                      <td style={tdStyle}>{item.invoice_no || '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {selectedPR.remarks && (
+                <div style={{ background: '#F9FAFB', borderRadius: 6, padding: '8px 12px', fontSize: 13, marginBottom: 12 }}>
+                  <strong>Remarks:</strong> {selectedPR.remarks}
+                </div>
+              )}
+              {prError && <div className="alert alert-error" style={{ marginBottom: 10 }}>{prError}</div>}
+              <div className="modal-actions">
+                <button className="btn btn-secondary" onClick={() => setSelectedPR(null)}>Cancel</button>
+                {selectedPR.status === 'pending' && (
+                  <>
+                    <button className="btn btn-danger" onClick={handlePRReject} disabled={prActionLoading}>
+                      {prActionLoading ? 'Processing…' : '✕ Reject'}
+                    </button>
+                    <button className="btn btn-primary" onClick={handlePRApprove} disabled={prActionLoading}>
+                      {prActionLoading ? 'Approving…' : '✓ Approve & Record'}
+                    </button>
+                  </>
+                )}
+              </div>
+            </>
+          ) : (
+            <>
+              {purchaseLoading ? (
+                <div style={{ padding: 24, textAlign: 'center', color: '#6b7280' }}>Loading…</div>
+              ) : (
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                  <thead>
+                    <tr style={{ background: '#F9FAFB' }}>
+                      <th style={thStyle}>#</th>
+                      <th style={thStyle}>Requested By</th>
+                      <th style={thStyle}>Items</th>
+                      <th style={thStyle}>Date</th>
+                      <th style={thStyle}>Status</th>
+                      <th style={thStyle}>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {purchaseRequests.length === 0 && (
+                      <tr><td colSpan={6} style={{ ...tdStyle, textAlign: 'center', color: '#9ca3af' }}>No purchase requests found.</td></tr>
+                    )}
+                    {purchaseRequests.map(pr => (
+                      <tr key={pr.id} style={{ background: pr.status === 'approved' ? '#F0FDF4' : pr.status === 'rejected' ? '#FFF5F5' : '' }}>
+                        <td style={tdStyle}><strong>#{pr.id}</strong></td>
+                        <td style={tdStyle}>{pr.requested_by}</td>
+                        <td style={tdStyle}>{pr.item_count} item{pr.item_count !== 1 ? 's' : ''}</td>
+                        <td style={tdStyle}>{pr.created_at?.slice(0,10)}</td>
+                        <td style={tdStyle}><StatusBadge status={pr.status} /></td>
+                        <td style={tdStyle}>
+                          <button className="btn btn-sm btn-secondary" onClick={() => openPRDetail(pr)}>
+                            {pr.status === 'pending' ? 'Review' : 'View'}
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+              <div className="modal-actions" style={{ marginTop: 12 }}>
+                <button className="btn btn-secondary" onClick={() => setShowPurchase(false)}>Close</button>
               </div>
             </>
           )}
