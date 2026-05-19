@@ -76,7 +76,7 @@ export default function RequisitionPage() {
   }
 
   // Transfer / Purchase panel (admin) — inline, not modal
-  const [activePanel, setActivePanel] = useState(null) // null | 'transfer' | 'purchase'
+  const [activePanel, setActivePanel] = useState(isAdmin ? 'transfer' : null) // null | 'transfer' | 'purchase'
 
   function openTransferModal() {
     setActivePanel(prev => prev === 'transfer' ? null : 'transfer')
