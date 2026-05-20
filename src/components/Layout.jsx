@@ -5,7 +5,7 @@ const navItems = [
   { to: '/dashboard', label: 'Dashboard', icon: '⊞' },
   { to: '/requisitions', label: 'Requisitions', icon: '📋' },
   { to: '/inventory', label: 'Inventory', icon: '📦' },
-  { to: '/inbound', label: 'Inbound (Purchase)', icon: '↓', strictAdminOnly: true },
+  { to: '/inbound', label: 'Inbound (Purchase)', icon: '↓', adminOnly: true },
   { to: '/outbound', label: 'Outbound (Transfer)', icon: '↑', adminOnly: true },
   { to: '/branches', label: 'Branches', icon: '🏢' },
   { to: '/categories', label: 'Categories', icon: '🏷️', adminOnly: true },

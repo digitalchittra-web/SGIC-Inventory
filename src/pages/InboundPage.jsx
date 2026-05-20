@@ -203,7 +203,9 @@ export default function InboundPage() {
           <h1 className="page-title">Inbound — Purchases</h1>
           <p className="page-sub">Record stock received from vendors. Cost recorded at actual purchase price.</p>
         </div>
-        <button className="btn btn-primary" onClick={openAdd}>+ Record Purchase</button>
+        {user?.role !== 'user_admin' && (
+          <button className="btn btn-primary" onClick={openAdd}>+ Record Purchase</button>
+        )}
       </div>
 
       {/* Filter Bar */}

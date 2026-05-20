@@ -76,7 +76,7 @@ router.post('/', auth, async (req, res) => {
         `INSERT INTO purchase_request_items (request_id, item_id, item_name, item_code, unit, quantity, unit_price, vendor_id, vendor_name, invoice_no, invoice_date)
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
         [requestId, dbItem.id, dbItem.name, dbItem.item_code, dbItem.unit || '',
-         parseFloat(item.quantity), parseFloat(item.unitPrice),
+         parseFloat(item.quantity), parseFloat(item.unitPrice) || 0,
          vendor?.id || null, vendor?.name || null,
          item.invoiceNo || null, item.invoiceDate || null]
       )
@@ -90,29 +90,48 @@ router.post('/', auth, async (req, res) => {
 })
 
 // POST approve purchase request — creates actual inbound records
+// Body: { itemDetails: [{ itemId, unitPrice, vendorId, invoiceNo, invoiceDate }] }
 router.post('/:id/approve', auth, adminOnly, async (req, res) => {
   try {
     const pr = await get('SELECT * FROM purchase_requests WHERE id = $1', [req.params.id])
     if (!pr) return res.status(404).json({ error: 'Not found' })
     if (pr.status !== 'pending') return res.status(400).json({ error: 'Already processed' })
 
-    const items = await all('SELECT * FROM purchase_request_items WHERE request_id = $1', [req.params.id])
+    const prItems = await all('SELECT * FROM purchase_request_items WHERE request_id = $1', [req.params.id])
     const activeFY = await get('SELECT id FROM fiscal_years WHERE is_active = 1')
+    // itemDetails keyed by purchase_request_items.id
+    const detailsMap = {}
+    if (req.body.itemDetails) {
+      for (const d of req.body.itemDetails) detailsMap[d.priId] = d
+    }
 
-    for (const ri of items) {
+    for (const ri of prItems) {
       const item = await get('SELECT * FROM items WHERE id = $1', [ri.item_id])
       if (!item) continue
+
+      const detail = detailsMap[ri.id] || {}
+      const qty = parseFloat(ri.quantity)
+      const price = parseFloat(detail.unitPrice) || parseFloat(ri.unit_price) || 0
+      const vendorId = detail.vendorId || ri.vendor_id || null
+      const invoiceNo = detail.invoiceNo || ri.invoice_no || null
+      const invoiceDate = detail.invoiceDate || ri.invoice_date || null
+
+      // Resolve vendor name
+      let vendorName = ri.vendor_name || null
+      if (detail.vendorId) {
+        const v = await get('SELECT name FROM vendors WHERE id = $1', [detail.vendorId])
+        vendorName = v?.name || null
+      }
+
       const oldQty = parseFloat(item.current_qty) || 0
       const oldWAC = parseFloat(item.weighted_avg_cost) || 0
-      const qty = parseFloat(ri.quantity)
-      const price = parseFloat(ri.unit_price)
       const newTotalQty = oldQty + qty
       const newWAC = newTotalQty === 0 ? 0 : (oldQty * oldWAC + qty * price) / newTotalQty
 
       await run(
         `INSERT INTO inbound (item_id, quantity, unit_price, vendor_id, vendor_name, invoice_no, invoice_date, created_by, fiscal_year_id)
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
-        [ri.item_id, qty, price, ri.vendor_id, ri.vendor_name, ri.invoice_no, ri.invoice_date, pr.user_id, activeFY?.id || null]
+        [ri.item_id, qty, price, vendorId, vendorName, invoiceNo, invoiceDate, pr.user_id, activeFY?.id || null]
       )
       await run('UPDATE items SET current_qty = $1, weighted_avg_cost = $2 WHERE id = $3', [newTotalQty, newWAC, ri.item_id])
     }

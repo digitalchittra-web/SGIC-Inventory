@@ -40,7 +40,7 @@ export default function App() {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/requisitions" element={<RequisitionPage />} />
         <Route path="/inventory" element={<InventoryWrapper />} />
-        <Route path="/inbound" element={<ProtectedRoute strictAdminOnly><InboundPage /></ProtectedRoute>} />
+        <Route path="/inbound" element={<ProtectedRoute adminOnly><InboundPage /></ProtectedRoute>} />
         <Route path="/outbound" element={<ProtectedRoute adminOnly><OutboundPage /></ProtectedRoute>} />
         <Route path="/branches" element={<BranchesPage />} />
         <Route path="/categories" element={<ProtectedRoute adminOnly><CategoriesPage /></ProtectedRoute>} />

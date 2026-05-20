@@ -75,8 +75,8 @@ export default function RequisitionPage() {
   }
 
   async function handleSubmitPurchaseReq() {
-    const valid = prFormRows.every(r => r.itemId && r.quantity > 0 && r.unitPrice > 0)
-    if (!valid) { setPrFormError('Every row must have an item, quantity ≥ 1, and unit price > 0.'); return }
+    const valid = prFormRows.every(r => r.itemId && r.quantity > 0)
+    if (!valid) { setPrFormError('Every row must have an item and quantity ≥ 1.'); return }
     setPrSubmitting(true); setPrFormError('')
     try {
       await api.post('/purchase-requests', {
@@ -131,6 +131,8 @@ export default function RequisitionPage() {
   const [selectedPR, setSelectedPR] = useState(null)
   const [prActionLoading, setPrActionLoading] = useState(false)
   const [prError, setPrError] = useState('')
+  // Admin fills in vendor/price/invoice per item before approving
+  const [prApprovalDetails, setPrApprovalDetails] = useState({}) // keyed by pri.id: {unitPrice, vendorId, invoiceNo, invoiceDate}
 
   async function openPurchaseModal() {
     const next = activePanel === 'purchase' ? null : 'purchase'
@@ -151,13 +153,29 @@ export default function RequisitionPage() {
       const res = await api.get(`/purchase-requests/${pr.id}`)
       setSelectedPR(res.data)
       setPrError('')
+      // Pre-init approval detail fields for each item
+      const init = {}
+      res.data.items?.forEach(item => {
+        init[item.id] = { unitPrice: '', vendorId: '', invoiceNo: '', invoiceDate: '' }
+      })
+      setPrApprovalDetails(init)
     } catch (err) { console.error(err) }
   }
 
   async function handlePRApprove() {
+    // Validate all items have unit price
+    const missing = selectedPR.items?.find(item => !prApprovalDetails[item.id]?.unitPrice)
+    if (missing) { setPrError(`Please enter unit price for: ${missing.item_name}`); return }
     setPrActionLoading(true); setPrError('')
     try {
-      await api.post(`/purchase-requests/${selectedPR.id}/approve`)
+      const itemDetails = selectedPR.items?.map(item => ({
+        priId: item.id,
+        unitPrice: parseFloat(prApprovalDetails[item.id]?.unitPrice) || 0,
+        vendorId: prApprovalDetails[item.id]?.vendorId || null,
+        invoiceNo: prApprovalDetails[item.id]?.invoiceNo || null,
+        invoiceDate: prApprovalDetails[item.id]?.invoiceDate || null,
+      }))
+      await api.post(`/purchase-requests/${selectedPR.id}/approve`, { itemDetails })
       setSelectedPR(null)
       const res = await api.get('/purchase-requests')
       setPurchaseRequests(res.data)
@@ -189,8 +207,8 @@ export default function RequisitionPage() {
   useEffect(() => {
     fetchRequisitions()
     api.get('/items').then(r => setItems(r.data)).catch(console.error)
-    if (isUserAdmin) {
-      fetchMyPurchaseReqs()
+    if (isUserAdmin) fetchMyPurchaseReqs()
+    if (isAdmin || isUserAdmin) {
       api.get('/vendors').then(r => setVendors(r.data)).catch(console.error)
     }
   }, [statusFilter])
@@ -532,15 +550,55 @@ export default function RequisitionPage() {
                 {' '}<StatusBadge status={selectedPR.status} />
               </div>
               <table className="table">
-                <thead><tr><th>Item</th><th>Qty</th><th>Unit Price</th><th>Vendor</th><th>Invoice</th></tr></thead>
+                <thead>
+                  <tr>
+                    <th>Item</th><th>Qty</th>
+                    <th>Unit Price (Rs) {selectedPR.status === 'pending' && <span style={{ color: '#DC2626' }}>*</span>}</th>
+                    <th>Vendor {selectedPR.status === 'pending' && <span style={{ color: '#DC2626' }}>*</span>}</th>
+                    <th>Invoice No</th>
+                    <th>Invoice Date</th>
+                  </tr>
+                </thead>
                 <tbody>
                   {selectedPR.items?.map(item => (
                     <tr key={item.id}>
                       <td><strong>{item.item_name}</strong> <span style={{ color: '#9ca3af', fontSize: 11 }}>({item.item_code})</span></td>
                       <td>{item.quantity} {item.unit || ''}</td>
-                      <td>Rs {parseFloat(item.unit_price).toLocaleString()}</td>
-                      <td>{item.vendor_name || '—'}</td>
-                      <td>{item.invoice_no || '—'}</td>
+                      {selectedPR.status === 'pending' ? (
+                        <>
+                          <td>
+                            <input className="form-input" type="number" min="0" step="any" style={{ width: 100 }}
+                              placeholder="0.00"
+                              value={prApprovalDetails[item.id]?.unitPrice || ''}
+                              onChange={e => setPrApprovalDetails(prev => ({ ...prev, [item.id]: { ...prev[item.id], unitPrice: e.target.value } }))} />
+                          </td>
+                          <td>
+                            <select className="form-input" style={{ width: 140 }}
+                              value={prApprovalDetails[item.id]?.vendorId || ''}
+                              onChange={e => setPrApprovalDetails(prev => ({ ...prev, [item.id]: { ...prev[item.id], vendorId: e.target.value } }))}>
+                              <option value="">— none —</option>
+                              {vendors.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
+                            </select>
+                          </td>
+                          <td>
+                            <input className="form-input" style={{ width: 110 }} placeholder="INV-001"
+                              value={prApprovalDetails[item.id]?.invoiceNo || ''}
+                              onChange={e => setPrApprovalDetails(prev => ({ ...prev, [item.id]: { ...prev[item.id], invoiceNo: e.target.value } }))} />
+                          </td>
+                          <td>
+                            <input className="form-input" type="date" style={{ width: 140 }}
+                              value={prApprovalDetails[item.id]?.invoiceDate || ''}
+                              onChange={e => setPrApprovalDetails(prev => ({ ...prev, [item.id]: { ...prev[item.id], invoiceDate: e.target.value } }))} />
+                          </td>
+                        </>
+                      ) : (
+                        <>
+                          <td>Rs {parseFloat(item.unit_price || 0).toLocaleString()}</td>
+                          <td>{item.vendor_name || '—'}</td>
+                          <td>{item.invoice_no || '—'}</td>
+                          <td>{item.invoice_date || '—'}</td>
+                        </>
+                      )}
                     </tr>
                   ))}
                 </tbody>
@@ -905,11 +963,7 @@ export default function RequisitionPage() {
               <thead>
                 <tr style={{ background: '#F9FAFB' }}>
                   <th style={thStyle}>Item *</th>
-                  <th style={thStyle}>Qty *</th>
-                  <th style={thStyle}>Unit Price *</th>
-                  <th style={thStyle}>Vendor</th>
-                  <th style={thStyle}>Invoice No</th>
-                  <th style={thStyle}>Invoice Date</th>
+                  <th style={thStyle}>Quantity *</th>
                   <th style={{ ...thStyle, width: 36 }}></th>
                 </tr>
               </thead>
@@ -926,32 +980,10 @@ export default function RequisitionPage() {
                       />
                     </td>
                     <td style={tdStyle}>
-                      <input className="form-input" type="number" min="1" step="any" style={{ width: 70 }}
+                      <input className="form-input" type="number" min="1" step="any" style={{ width: 90 }}
                         value={row.quantity}
                         onChange={e => setPrFormRows(prev => prev.map((r, idx) => idx === i ? { ...r, quantity: e.target.value } : r))}
                         placeholder="0" />
-                    </td>
-                    <td style={tdStyle}>
-                      <input className="form-input" type="number" min="0" step="any" style={{ width: 90 }}
-                        value={row.unitPrice}
-                        onChange={e => setPrFormRows(prev => prev.map((r, idx) => idx === i ? { ...r, unitPrice: e.target.value } : r))}
-                        placeholder="0.00" />
-                    </td>
-                    <td style={tdStyle}>
-                      <select className="form-input" style={{ width: 130 }} value={row.vendorId}
-                        onChange={e => setPrFormRows(prev => prev.map((r, idx) => idx === i ? { ...r, vendorId: e.target.value } : r))}>
-                        <option value="">— none —</option>
-                        {vendors.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
-                      </select>
-                    </td>
-                    <td style={tdStyle}>
-                      <input className="form-input" style={{ width: 100 }} value={row.invoiceNo}
-                        onChange={e => setPrFormRows(prev => prev.map((r, idx) => idx === i ? { ...r, invoiceNo: e.target.value } : r))}
-                        placeholder="INV-001" />
-                    </td>
-                    <td style={tdStyle}>
-                      <input className="form-input" type="date" style={{ width: 130 }} value={row.invoiceDate}
-                        onChange={e => setPrFormRows(prev => prev.map((r, idx) => idx === i ? { ...r, invoiceDate: e.target.value } : r))} />
                     </td>
                     <td style={{ ...tdStyle, textAlign: 'center' }}>
                       <button type="button" onClick={() => setPrFormRows(prev => prev.filter((_, idx) => idx !== i))}
@@ -975,7 +1007,7 @@ export default function RequisitionPage() {
               placeholder="Purpose / notes for this purchase…" style={{ resize: 'vertical' }} />
           </div>
           <div style={{ background: '#FEF3C7', border: '1px solid #FDE68A', borderRadius: 6, padding: '8px 12px', fontSize: 12, color: '#92400E', marginTop: 10 }}>
-            This request will be sent to admin for approval before items are recorded in inventory.
+            Admin will add vendor, price and invoice details upon approval. Request will then appear in Inbound.
           </div>
           <div className="modal-actions">
             <button className="btn btn-secondary" onClick={() => setShowPurchaseReq(false)}>Cancel</button>
