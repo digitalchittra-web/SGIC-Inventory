@@ -19,13 +19,13 @@ import DepartmentsPage from './pages/DepartmentsPage.jsx'
 function ProtectedRoute({ children, adminOnly = false }) {
   const { user, token } = useAuth()
   if (!token || !user) return <Navigate to="/login" replace />
-  if (adminOnly && user.role !== 'admin') return <Navigate to="/dashboard" replace />
+  if (adminOnly && !['admin', 'user_admin'].includes(user.role)) return <Navigate to="/dashboard" replace />
   return children
 }
 
 function InventoryWrapper() {
   const { user } = useAuth()
-  return user?.role === 'admin'
+  return ['admin', 'user_admin'].includes(user?.role)
     ? <ProtectedRoute adminOnly><InventoryPage /></ProtectedRoute>
     : <UserInventoryPage />
 }

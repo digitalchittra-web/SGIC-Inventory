@@ -10,8 +10,9 @@ function StatusBadge({ status }) {
     pending: { background: '#FEF3C7', color: '#B45309', border: '1px solid #FDE68A' },
     approved: { background: '#D1FAE5', color: '#065F46', border: '1px solid #6EE7B7' },
     rejected: { background: '#FEE2E2', color: '#991B1B', border: '1px solid #FCA5A5' },
+    voided: { background: '#F3F4F6', color: '#6B7280', border: '1px solid #D1D5DB' },
   }
-  const labels = { pending: 'Pending', approved: 'Approved', rejected: 'Invalid Slip' }
+  const labels = { pending: 'Pending', approved: 'Approved', rejected: 'Rejected', voided: 'Voided' }
   return (
     <span style={{
       padding: '2px 10px', borderRadius: 12, fontSize: 12, fontWeight: 600,
@@ -24,10 +25,12 @@ function StatusBadge({ status }) {
 
 // ── Empty row for new requisition form ──────────────────────────────────────
 const emptyItemRow = () => ({ itemId: '', quantity: '', description: '' })
+const emptyPurchaseRow = () => ({ itemId: '', quantity: '', unitPrice: '', vendorId: '', invoiceNo: '', invoiceDate: '' })
 
 export default function RequisitionPage() {
   const { user } = useAuth()
   const isAdmin = user?.role === 'admin'
+  const isUserAdmin = user?.role === 'user_admin'
 
   const [requisitions, setRequisitions] = useState([])
   const [items, setItems] = useState([])
@@ -54,6 +57,45 @@ export default function RequisitionPage() {
   const [editRemarks, setEditRemarks] = useState('')
   const [editError, setEditError] = useState('')
   const [editSubmitting, setEditSubmitting] = useState(false)
+
+  // user_admin: Purchase Requisition form
+  const [showPurchaseReq, setShowPurchaseReq] = useState(false)
+  const [prFormRows, setPrFormRows] = useState([emptyPurchaseRow()])
+  const [prRemarks, setPrRemarks] = useState('')
+  const [prFormError, setPrFormError] = useState('')
+  const [prSubmitting, setPrSubmitting] = useState(false)
+  const [myPurchaseReqs, setMyPurchaseReqs] = useState([])
+  const [myPRLoading, setMyPRLoading] = useState(false)
+  const [vendors, setVendors] = useState([])
+
+  function fetchMyPurchaseReqs() {
+    if (!isUserAdmin) return
+    setMyPRLoading(true)
+    api.get('/purchase-requests').then(r => setMyPurchaseReqs(r.data)).catch(console.error).finally(() => setMyPRLoading(false))
+  }
+
+  async function handleSubmitPurchaseReq() {
+    const valid = prFormRows.every(r => r.itemId && r.quantity > 0 && r.unitPrice > 0)
+    if (!valid) { setPrFormError('Every row must have an item, quantity ≥ 1, and unit price > 0.'); return }
+    setPrSubmitting(true); setPrFormError('')
+    try {
+      await api.post('/purchase-requests', {
+        items: prFormRows.map(r => ({
+          itemId: r.itemId, quantity: parseFloat(r.quantity), unitPrice: parseFloat(r.unitPrice),
+          vendorId: r.vendorId || null, invoiceNo: r.invoiceNo || null, invoiceDate: r.invoiceDate || null,
+        })),
+        remarks: prRemarks,
+      })
+      setShowPurchaseReq(false)
+      setPrFormRows([emptyPurchaseRow()])
+      setPrRemarks('')
+      fetchMyPurchaseReqs()
+    } catch (err) {
+      setPrFormError(err.response?.data?.error || 'Submission failed')
+    } finally {
+      setPrSubmitting(false)
+    }
+  }
 
   // Item summary modal
   const [showSummary, setShowSummary] = useState(false)
@@ -147,6 +189,10 @@ export default function RequisitionPage() {
   useEffect(() => {
     fetchRequisitions()
     api.get('/items').then(r => setItems(r.data)).catch(console.error)
+    if (isUserAdmin) {
+      fetchMyPurchaseReqs()
+      api.get('/vendors').then(r => setVendors(r.data)).catch(console.error)
+    }
   }, [statusFilter])
 
   // ── Create form ────────────────────────────────────────────────────────────
@@ -342,7 +388,12 @@ export default function RequisitionPage() {
           {isAdmin && (
             <button className="btn btn-secondary" onClick={openSummary}>Total Items</button>
           )}
-          {!isAdmin && (
+          {isUserAdmin && (
+            <button className="btn btn-primary" onClick={() => { setShowPurchaseReq(true); setPrFormError(''); setPrFormRows([emptyPurchaseRow()]); setPrRemarks('') }}>
+              + Purchase Requisition
+            </button>
+          )}
+          {!isAdmin && !isUserAdmin && (
             <button className="btn btn-primary" onClick={handleOpenCreate}>+ New Requisition</button>
           )}
         </div>
@@ -398,6 +449,34 @@ export default function RequisitionPage() {
             </tbody>
           </table>
         </>
+      )}
+
+      {/* ── user_admin: My Purchase Requests list ── */}
+      {isUserAdmin && (
+        <div style={{ marginTop: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+            <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700 }}>My Purchase Requests</h3>
+            <button className="btn btn-secondary btn-sm" onClick={fetchMyPurchaseReqs}>↻ Refresh</button>
+          </div>
+          <table className="table">
+            <thead>
+              <tr><th>#</th><th>Items</th><th>Date</th><th>Status</th><th>Remarks</th></tr>
+            </thead>
+            <tbody>
+              {myPRLoading && <tr><td colSpan={5} className="empty-row">Loading…</td></tr>}
+              {!myPRLoading && myPurchaseReqs.length === 0 && <tr><td colSpan={5} className="empty-row">No purchase requests yet.</td></tr>}
+              {myPurchaseReqs.map(pr => (
+                <tr key={pr.id} style={{ background: pr.status === 'approved' ? '#F0FDF4' : pr.status === 'rejected' ? '#FFF5F5' : pr.status === 'voided' ? '#F3F4F6' : '' }}>
+                  <td><strong>#{pr.id}</strong></td>
+                  <td>{pr.item_count} item{pr.item_count !== 1 ? 's' : ''}</td>
+                  <td>{pr.created_at?.slice(0, 10)}</td>
+                  <td><StatusBadge status={pr.status} /></td>
+                  <td style={{ fontSize: 12, color: '#6b7280' }}>{pr.remarks || '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
 
       {/* ── Admin inline panels ── */}
@@ -472,6 +551,21 @@ export default function RequisitionPage() {
                 <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
                   <button className="btn btn-danger" onClick={handlePRReject} disabled={prActionLoading}>{prActionLoading ? 'Processing…' : '✕ Reject'}</button>
                   <button className="btn btn-primary" onClick={handlePRApprove} disabled={prActionLoading}>{prActionLoading ? 'Approving…' : '✓ Approve & Record'}</button>
+                </div>
+              )}
+              {selectedPR.status === 'approved' && (
+                <div style={{ marginTop: 12 }}>
+                  <button className="btn btn-danger" disabled={prActionLoading} onClick={async () => {
+                    if (!confirm('Void this purchase request? This will reverse the inventory entries.')) return
+                    setPrActionLoading(true); setPrError('')
+                    try {
+                      await api.post(`/purchase-requests/${selectedPR.id}/void`)
+                      setSelectedPR(null)
+                      const res = await api.get('/purchase-requests')
+                      setPurchaseRequests(res.data)
+                    } catch (err) { setPrError(err.response?.data?.error || 'Failed to void') }
+                    finally { setPrActionLoading(false) }
+                  }}>{prActionLoading ? 'Processing…' : '✕ Void & Reverse'}</button>
                 </div>
               )}
             </>
@@ -798,6 +892,96 @@ export default function RequisitionPage() {
           )}
           <div className="modal-actions" style={{ marginTop: 16 }}>
             <button className="btn btn-secondary" onClick={() => setShowSummary(false)}>Close</button>
+          </div>
+        </Modal>
+      )}
+
+      {/* ── user_admin: Purchase Requisition Modal ── */}
+      {showPurchaseReq && (
+        <Modal title="New Purchase Requisition" onClose={() => setShowPurchaseReq(false)}>
+          {prFormError && <div className="alert alert-error" style={{ marginBottom: 12 }}>{prFormError}</div>}
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+              <thead>
+                <tr style={{ background: '#F9FAFB' }}>
+                  <th style={thStyle}>Item *</th>
+                  <th style={thStyle}>Qty *</th>
+                  <th style={thStyle}>Unit Price *</th>
+                  <th style={thStyle}>Vendor</th>
+                  <th style={thStyle}>Invoice No</th>
+                  <th style={thStyle}>Invoice Date</th>
+                  <th style={{ ...thStyle, width: 36 }}></th>
+                </tr>
+              </thead>
+              <tbody>
+                {prFormRows.map((row, i) => (
+                  <tr key={i}>
+                    <td style={tdStyle}>
+                      <ItemPicker
+                        items={items}
+                        value={row.itemId}
+                        onChange={v => setPrFormRows(prev => prev.map((r, idx) => idx === i ? { ...r, itemId: v } : r))}
+                        placeholder="Search item…"
+                        hideQuantity
+                      />
+                    </td>
+                    <td style={tdStyle}>
+                      <input className="form-input" type="number" min="1" step="any" style={{ width: 70 }}
+                        value={row.quantity}
+                        onChange={e => setPrFormRows(prev => prev.map((r, idx) => idx === i ? { ...r, quantity: e.target.value } : r))}
+                        placeholder="0" />
+                    </td>
+                    <td style={tdStyle}>
+                      <input className="form-input" type="number" min="0" step="any" style={{ width: 90 }}
+                        value={row.unitPrice}
+                        onChange={e => setPrFormRows(prev => prev.map((r, idx) => idx === i ? { ...r, unitPrice: e.target.value } : r))}
+                        placeholder="0.00" />
+                    </td>
+                    <td style={tdStyle}>
+                      <select className="form-input" style={{ width: 130 }} value={row.vendorId}
+                        onChange={e => setPrFormRows(prev => prev.map((r, idx) => idx === i ? { ...r, vendorId: e.target.value } : r))}>
+                        <option value="">— none —</option>
+                        {vendors.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
+                      </select>
+                    </td>
+                    <td style={tdStyle}>
+                      <input className="form-input" style={{ width: 100 }} value={row.invoiceNo}
+                        onChange={e => setPrFormRows(prev => prev.map((r, idx) => idx === i ? { ...r, invoiceNo: e.target.value } : r))}
+                        placeholder="INV-001" />
+                    </td>
+                    <td style={tdStyle}>
+                      <input className="form-input" type="date" style={{ width: 130 }} value={row.invoiceDate}
+                        onChange={e => setPrFormRows(prev => prev.map((r, idx) => idx === i ? { ...r, invoiceDate: e.target.value } : r))} />
+                    </td>
+                    <td style={{ ...tdStyle, textAlign: 'center' }}>
+                      <button type="button" onClick={() => setPrFormRows(prev => prev.filter((_, idx) => idx !== i))}
+                        disabled={prFormRows.length <= 1}
+                        style={{ background: 'none', border: 'none', cursor: prFormRows.length <= 1 ? 'not-allowed' : 'pointer', color: prFormRows.length <= 1 ? '#D1D5DB' : '#EF4444', fontSize: 16 }}>
+                        &#x2715;
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <button type="button" className="btn btn-secondary btn-sm" style={{ marginTop: 10 }}
+            onClick={() => setPrFormRows(prev => [...prev, emptyPurchaseRow()])}>
+            + Add Item
+          </button>
+          <div className="form-group" style={{ marginTop: 14 }}>
+            <label className="form-label">Remarks</label>
+            <textarea className="form-input" rows={2} value={prRemarks} onChange={e => setPrRemarks(e.target.value)}
+              placeholder="Purpose / notes for this purchase…" style={{ resize: 'vertical' }} />
+          </div>
+          <div style={{ background: '#FEF3C7', border: '1px solid #FDE68A', borderRadius: 6, padding: '8px 12px', fontSize: 12, color: '#92400E', marginTop: 10 }}>
+            This request will be sent to admin for approval before items are recorded in inventory.
+          </div>
+          <div className="modal-actions">
+            <button className="btn btn-secondary" onClick={() => setShowPurchaseReq(false)}>Cancel</button>
+            <button className="btn btn-primary" onClick={handleSubmitPurchaseReq} disabled={prSubmitting}>
+              {prSubmitting ? 'Submitting…' : 'Submit for Approval'}
+            </button>
           </div>
         </Modal>
       )}

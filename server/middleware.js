@@ -30,6 +30,13 @@ export async function auth(req, res, next) {
 }
 
 export function adminOnly(req, res, next) {
+  if (!['admin', 'user_admin'].includes(req.user.role)) {
+    return res.status(403).json({ error: 'Admin access required' })
+  }
+  next()
+}
+
+export function strictAdminOnly(req, res, next) {
   if (req.user.role !== 'admin') {
     return res.status(403).json({ error: 'Admin access required' })
   }

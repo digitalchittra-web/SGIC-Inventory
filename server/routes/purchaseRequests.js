@@ -139,6 +139,39 @@ router.post('/:id/reject', auth, adminOnly, async (req, res) => {
   }
 })
 
+// POST void approved purchase request — reverses inbound records
+router.post('/:id/void', auth, async (req, res) => {
+  try {
+    if (!['admin', 'user_admin'].includes(req.user.role)) return res.status(403).json({ error: 'Forbidden' })
+    const pr = await get('SELECT * FROM purchase_requests WHERE id = $1', [req.params.id])
+    if (!pr) return res.status(404).json({ error: 'Not found' })
+    if (pr.status !== 'approved') return res.status(400).json({ error: 'Only approved requests can be voided' })
+
+    const items = await all('SELECT * FROM purchase_request_items WHERE request_id = $1', [req.params.id])
+    for (const ri of items) {
+      const item = await get('SELECT * FROM items WHERE id = $1', [ri.item_id])
+      if (!item) continue
+      const oldQty = parseFloat(item.current_qty) || 0
+      const qty = parseFloat(ri.quantity)
+      const newQty = Math.max(0, oldQty - qty)
+      await run('UPDATE items SET current_qty = $1 WHERE id = $2', [newQty, ri.item_id])
+      await run(
+        `DELETE FROM inbound WHERE id = (
+          SELECT id FROM inbound WHERE item_id = $1 AND quantity = $2 AND created_by = $3
+          ORDER BY created_at DESC LIMIT 1
+        )`,
+        [ri.item_id, qty, pr.user_id]
+      )
+    }
+
+    await run(`UPDATE purchase_requests SET status = 'voided' WHERE id = $1`, [req.params.id])
+    await logAction(req.user.id, 'VOID_PURCHASE_REQUEST', 'purchase_request', pr.id, `Voided purchase request #${pr.id}`)
+    res.json({ message: 'Purchase request voided and inventory reversed' })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
 // DELETE purchase request (user_admin own pending only)
 router.delete('/:id', auth, async (req, res) => {
   try {

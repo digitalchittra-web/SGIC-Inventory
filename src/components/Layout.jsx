@@ -37,7 +37,7 @@ export default function Layout() {
 
         <nav className="sidebar-nav">
           {navItems
-            .filter(item => !item.adminOnly || user?.role === 'admin')
+            .filter(item => !item.adminOnly || ['admin', 'user_admin'].includes(user?.role))
             .map(item => (
               <NavLink
                 key={item.to}
