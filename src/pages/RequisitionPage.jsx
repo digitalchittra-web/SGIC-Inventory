@@ -134,17 +134,21 @@ export default function RequisitionPage() {
   // Admin fills in vendor/price/invoice per item before approving
   const [prApprovalDetails, setPrApprovalDetails] = useState({}) // keyed by pri.id: {unitPrice, vendorId, invoiceNo, invoiceDate}
 
+  async function loadPurchaseRequests() {
+    setPurchaseLoading(true)
+    try {
+      const res = await api.get('/purchase-requests')
+      setPurchaseRequests(res.data)
+    } catch (err) { console.error(err) }
+    finally { setPurchaseLoading(false) }
+  }
+
   async function openPurchaseModal() {
     const next = activePanel === 'purchase' ? null : 'purchase'
     setActivePanel(next)
     if (next === 'purchase') {
-      setPurchaseLoading(true)
       setSelectedPR(null)
-      try {
-        const res = await api.get('/purchase-requests')
-        setPurchaseRequests(res.data)
-      } catch (err) { console.error(err) }
-      finally { setPurchaseLoading(false) }
+      loadPurchaseRequests()
     }
   }
 
@@ -208,6 +212,7 @@ export default function RequisitionPage() {
     fetchRequisitions()
     api.get('/items').then(r => setItems(r.data)).catch(console.error)
     if (isUserAdmin) fetchMyPurchaseReqs()
+    if (isAdmin) loadPurchaseRequests()
     if (isAdmin || isUserAdmin) {
       api.get('/vendors').then(r => setVendors(r.data)).catch(console.error)
     }
@@ -664,6 +669,11 @@ export default function RequisitionPage() {
             onClick={openPurchaseModal}
           >
             Purchase Requests
+            {purchaseRequests.filter(p => p.status === 'pending').length > 0 && (
+              <span style={{ marginLeft: 6, background: '#EF4444', color: '#fff', borderRadius: 10, fontSize: 11, padding: '1px 7px', fontWeight: 700 }}>
+                {purchaseRequests.filter(p => p.status === 'pending').length}
+              </span>
+            )}
           </button>
         </div>
       )}
