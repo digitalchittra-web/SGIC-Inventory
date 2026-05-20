@@ -16,9 +16,10 @@ import RequisitionPage from './pages/RequisitionPage.jsx'
 import UserInventoryPage from './pages/UserInventoryPage.jsx'
 import DepartmentsPage from './pages/DepartmentsPage.jsx'
 
-function ProtectedRoute({ children, adminOnly = false }) {
+function ProtectedRoute({ children, adminOnly = false, strictAdminOnly = false }) {
   const { user, token } = useAuth()
   if (!token || !user) return <Navigate to="/login" replace />
+  if (strictAdminOnly && user.role !== 'admin') return <Navigate to="/dashboard" replace />
   if (adminOnly && !['admin', 'user_admin'].includes(user.role)) return <Navigate to="/dashboard" replace />
   return children
 }
@@ -39,7 +40,7 @@ export default function App() {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/requisitions" element={<RequisitionPage />} />
         <Route path="/inventory" element={<InventoryWrapper />} />
-        <Route path="/inbound" element={<ProtectedRoute adminOnly><InboundPage /></ProtectedRoute>} />
+        <Route path="/inbound" element={<ProtectedRoute strictAdminOnly><InboundPage /></ProtectedRoute>} />
         <Route path="/outbound" element={<ProtectedRoute adminOnly><OutboundPage /></ProtectedRoute>} />
         <Route path="/branches" element={<BranchesPage />} />
         <Route path="/categories" element={<ProtectedRoute adminOnly><CategoriesPage /></ProtectedRoute>} />

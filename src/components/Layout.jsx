@@ -5,7 +5,7 @@ const navItems = [
   { to: '/dashboard', label: 'Dashboard', icon: '⊞' },
   { to: '/requisitions', label: 'Requisitions', icon: '📋' },
   { to: '/inventory', label: 'Inventory', icon: '📦' },
-  { to: '/inbound', label: 'Inbound (Purchase)', icon: '↓', adminOnly: true },
+  { to: '/inbound', label: 'Inbound (Purchase)', icon: '↓', strictAdminOnly: true },
   { to: '/outbound', label: 'Outbound (Transfer)', icon: '↑', adminOnly: true },
   { to: '/branches', label: 'Branches', icon: '🏢' },
   { to: '/categories', label: 'Categories', icon: '🏷️', adminOnly: true },
@@ -37,7 +37,11 @@ export default function Layout() {
 
         <nav className="sidebar-nav">
           {navItems
-            .filter(item => !item.adminOnly || ['admin', 'user_admin'].includes(user?.role))
+            .filter(item => {
+              if (item.strictAdminOnly) return user?.role === 'admin'
+              if (item.adminOnly) return ['admin', 'user_admin'].includes(user?.role)
+              return true
+            })
             .map(item => (
               <NavLink
                 key={item.to}
